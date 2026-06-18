@@ -11,25 +11,34 @@
   <nav class="navbar">
     <span class="nav-logo">💪 GymTracker</span>
     <div class="nav-links">
-      <button class="nav-btn active" data-tab="log">Log</button>
+      <button class="nav-btn active" data-tab="calendar">Calendar</button>
+      <button class="nav-btn" data-tab="workout">Workout</button>
+      <button class="nav-btn" data-tab="run">Run</button>
       <button class="nav-btn" data-tab="history">History</button>
-      <button class="nav-btn" data-tab="calendar">Calendar</button>
       <button class="nav-btn" data-tab="records">PRs</button>
     </div>
   </nav>
 
   <main class="container">
 
-    <!-- ── LOG TAB ── -->
-    <section id="tab-log" class="tab active">
-
-      <!-- Toggle: Workout / Run -->
-      <div class="toggle-group">
-        <button class="toggle-btn active" id="btn-workout">🏋️ Workout</button>
-        <button class="toggle-btn" id="btn-run">🏃 Run</button>
+    <!-- ── CALENDAR TAB (default) ── -->
+    <section id="tab-calendar" class="tab active">
+      <div class="cal-header">
+        <button class="cal-nav" id="cal-prev">‹</button>
+        <h2 id="cal-title"></h2>
+        <button class="cal-nav" id="cal-next">›</button>
       </div>
+      <div class="cal-legend">
+        <span class="dot dot-workout"></span> Workout
+        <span class="dot dot-run"></span> Run
+        <span class="dot dot-both"></span> Both
+      </div>
+      <div id="cal-grid" class="cal-grid"></div>
+      <div id="cal-detail" class="cal-detail hidden"></div>
+    </section>
 
-      <!-- WORKOUT FORM -->
+    <!-- ── WORKOUT TAB ── -->
+    <section id="tab-workout" class="tab">
       <form id="workout-form" class="card form-card">
         <h2 class="form-title">Log workout</h2>
 
@@ -99,9 +108,11 @@
 
         <button type="submit" class="btn-primary">Save workout</button>
       </form>
+    </section>
 
-      <!-- RUN FORM -->
-      <form id="run-form" class="card form-card hidden">
+    <!-- ── RUN TAB ── -->
+    <section id="tab-run" class="tab">
+      <form id="run-form" class="card form-card">
         <h2 class="form-title">Log run</h2>
 
         <div class="form-row">
@@ -133,7 +144,6 @@
 
         <button type="submit" class="btn-primary">Save run</button>
       </form>
-
     </section>
 
     <!-- ── HISTORY TAB ── -->
@@ -152,22 +162,6 @@
         </div>
       </div>
       <div id="history-list" class="history-list"></div>
-    </section>
-
-    <!-- ── CALENDAR TAB ── -->
-    <section id="tab-calendar" class="tab">
-      <div class="cal-header">
-        <button class="cal-nav" id="cal-prev">‹</button>
-        <h2 id="cal-title"></h2>
-        <button class="cal-nav" id="cal-next">›</button>
-      </div>
-      <div class="cal-legend">
-        <span class="dot dot-workout"></span> Workout
-        <span class="dot dot-run"></span> Run
-        <span class="dot dot-both"></span> Both
-      </div>
-      <div id="cal-grid" class="cal-grid"></div>
-      <div id="cal-detail" class="cal-detail hidden"></div>
     </section>
 
     <!-- ── RECORDS TAB ── -->
