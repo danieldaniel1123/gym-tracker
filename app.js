@@ -86,12 +86,12 @@ document.addEventListener("DOMContentLoaded", () => {
   setDefaultDates();
   populateDayDropdowns();
   bindNav();
-  bindToggle();
   bindWorkoutForm();
   bindRunForm();
   bindHistory();
   bindCalendar();
   bindRecords();
+  renderCalendar();
   renderHistory();
   renderRecords();
 });
@@ -127,26 +127,9 @@ function bindNav() {
       document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
       btn.classList.add("active");
       $("tab-" + btn.dataset.tab).classList.add("active");
-      if (btn.dataset.tab === "calendar") renderCalendar();
-      if (btn.dataset.tab === "records")  renderRecords();
-      if (btn.dataset.tab === "history")  renderHistory();
+      if (btn.dataset.tab === "records") renderRecords();
+      if (btn.dataset.tab === "history") renderHistory();
     });
-  });
-}
-
-/* ── WORKOUT / RUN TOGGLE ── */
-function bindToggle() {
-  $("btn-workout").addEventListener("click", () => {
-    $("btn-workout").classList.add("active");
-    $("btn-run").classList.remove("active");
-    $("workout-form").classList.remove("hidden");
-    $("run-form").classList.add("hidden");
-  });
-  $("btn-run").addEventListener("click", () => {
-    $("btn-run").classList.add("active");
-    $("btn-workout").classList.remove("active");
-    $("run-form").classList.remove("hidden");
-    $("workout-form").classList.add("hidden");
   });
 }
 
