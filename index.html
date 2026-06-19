@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,6 +18,7 @@
       <button class="nav-btn" data-tab="history">History</button>
       <button class="nav-btn" data-tab="records">PRs</button>
       <button class="nav-btn" data-tab="shoes">Shoes</button>
+      <button class="theme-toggle" id="theme-toggle" title="Toggle theme">🌙</button>
     </div>
   </nav>
 
@@ -41,10 +42,15 @@
 
     <!-- ── WORKOUT TAB ── -->
     <section id="tab-workout" class="tab">
+
+      <!-- Setup card -->
       <div id="workout-setup">
         <div class="card form-card">
-          <h2 class="form-title">Start a session</h2>
-          <div class="form-row">
+          <div class="setup-card-header">
+            <h2 class="form-title" style="margin-bottom:0">Start a session</h2>
+            <button class="exercises-mgr-btn" id="open-exercise-mgr" title="Manage exercises">⚙️ Exercises</button>
+          </div>
+          <div class="form-row" style="margin-top:1rem">
             <div class="field">
               <label>Date</label>
               <input type="date" id="w-date" required />
@@ -60,6 +66,48 @@
         </div>
       </div>
 
+      <!-- Exercise manager panel (hidden by default) -->
+      <div id="exercise-manager" class="hidden">
+        <div class="card form-card">
+          <div class="setup-card-header">
+            <h2 class="form-title" style="margin-bottom:0">Exercise library</h2>
+            <button class="exercises-mgr-btn" id="close-exercise-mgr">✕ Close</button>
+          </div>
+
+          <div style="margin-top:1rem;margin-bottom:0.75rem;display:flex;gap:8px;align-items:center">
+            <input type="text" id="ex-mgr-search" placeholder="Search exercises…" style="flex:1" />
+            <button class="btn-primary" id="add-new-exercise-btn" style="width:auto;padding:9px 14px;white-space:nowrap">+ New</button>
+          </div>
+
+          <!-- Add/Edit form (hidden until triggered) -->
+          <div id="ex-edit-form" class="ex-edit-form hidden">
+            <div class="field"><label>Exercise name</label><input type="text" id="ex-name-input" placeholder="e.g. Incline dumbbell press" /></div>
+            <div class="field" style="margin-top:0.75rem">
+              <label>Exercise days</label>
+              <div id="ex-days-tags" class="tag-editor"></div>
+              <select id="ex-days-add" style="margin-top:5px"><option value="">+ Add day…</option></select>
+            </div>
+            <div class="field" style="margin-top:0.75rem">
+              <label>Target muscles</label>
+              <div id="ex-muscles-tags" class="tag-editor"></div>
+              <select id="ex-muscles-add" style="margin-top:5px"><option value="">+ Add muscle…</option></select>
+            </div>
+            <div class="field" style="margin-top:0.75rem">
+              <label>Equipment / machines</label>
+              <div id="ex-equip-tags" class="tag-editor"></div>
+              <input type="text" id="ex-equip-input" placeholder="Type equipment and press Enter…" style="margin-top:5px" />
+            </div>
+            <div style="display:flex;gap:8px;margin-top:1rem">
+              <button id="ex-form-cancel" class="btn-discard" style="flex:1">Cancel</button>
+              <button id="ex-form-save" class="btn-finish" style="flex:2">Save exercise</button>
+            </div>
+          </div>
+
+          <div id="ex-mgr-list" class="ex-mgr-list"></div>
+        </div>
+      </div>
+
+      <!-- Active session -->
       <div id="workout-session" class="hidden">
         <div class="session-topbar">
           <div>
@@ -68,21 +116,18 @@
           </div>
           <div class="timer-chip" id="session-timer">00:00:00</div>
         </div>
-
         <div id="exercise-list" class="exercise-list"></div>
-
         <button id="add-exercise-btn" class="add-exercise-btn">+ Add exercise</button>
-
         <div id="exercise-picker" class="exercise-picker hidden">
           <input type="text" id="exercise-search" placeholder="Search exercises…" />
           <div id="exercise-picker-list" class="exercise-picker-list"></div>
         </div>
-
         <div class="session-actions">
           <button id="discard-session-btn" class="btn-discard">Discard session</button>
           <button id="finish-session-btn" class="btn-finish">Finish session</button>
         </div>
       </div>
+
     </section>
 
     <!-- ── RUN TAB ── -->
@@ -106,21 +151,48 @@
           </div>
           <div class="field">
             <label>Time (hh:mm:ss)</label>
-            <input type="text" id="r-time" placeholder="00:30:00" />
+            <input type="text" id="r-time" placeholder="00:00:00" maxlength="8" inputmode="numeric" />
           </div>
         </div>
         <div class="field">
           <label>Shoe</label>
-          <select id="r-shoe">
-            <option value="">No shoe selected</option>
-          </select>
+          <select id="r-shoe"><option value="">No shoe selected</option></select>
         </div>
+
+        <!-- Per-km breakdown -->
+        <div class="km-section">
+          <div class="km-section-header">
+            <span class="km-section-label">Per-km breakdown</span>
+            <button type="button" id="add-km-btn" class="btn-add-km">+ Add km</button>
+          </div>
+          <div id="km-table-wrap" class="hidden">
+            <table class="km-table" id="km-table">
+              <thead>
+                <tr>
+                  <th>Km</th>
+                  <th>Pace (mm:ss)</th>
+                  <th>HR (bpm)</th>
+                </tr>
+              </thead>
+              <tbody id="km-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="field">
           <label>Notes</label>
           <textarea id="r-notes" rows="2" placeholder="Route, how you felt…"></textarea>
         </div>
         <button type="submit" class="btn-primary">Save run</button>
       </form>
+
+      <!-- Running PRs -->
+      <div class="card" style="margin-top:1rem">
+        <div style="padding:1rem 1.25rem">
+          <h3 style="font-size:0.9rem;font-weight:700;margin-bottom:1rem">Running PRs</h3>
+          <div id="run-pr-grid" class="run-pr-grid"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ── HISTORY TAB ── -->
@@ -133,9 +205,7 @@
             <option value="workout">Workouts</option>
             <option value="run">Runs</option>
           </select>
-          <select id="filter-day">
-            <option value="all">All days</option>
-          </select>
+          <select id="filter-day"><option value="all">All days</option></select>
         </div>
       </div>
       <div id="history-list" class="history-list"></div>
@@ -156,41 +226,24 @@
         <h2>Shoes</h2>
         <button id="add-shoe-btn" class="btn-add-shoe">+ Add shoe</button>
       </div>
-
       <div id="shoe-form-wrap" class="shoe-form-wrap hidden">
         <div class="card form-card">
           <h2 class="form-title" id="shoe-form-title">Add shoe</h2>
           <div class="form-row">
-            <div class="field">
-              <label>Brand</label>
-              <input type="text" id="shoe-brand" placeholder="e.g. Nike" />
-            </div>
-            <div class="field">
-              <label>Model</label>
-              <input type="text" id="shoe-model" placeholder="e.g. Pegasus 41" />
-            </div>
+            <div class="field"><label>Brand</label><input type="text" id="shoe-brand" placeholder="e.g. Nike" /></div>
+            <div class="field"><label>Model</label><input type="text" id="shoe-model" placeholder="e.g. Pegasus 41" /></div>
           </div>
           <div class="form-row">
-            <div class="field">
-              <label>Starting km</label>
-              <input type="number" id="shoe-start-km" min="0" step="0.1" placeholder="0" />
-            </div>
-            <div class="field">
-              <label>Max km (recommended)</label>
-              <input type="number" id="shoe-max-km" min="0" step="10" placeholder="800" />
-            </div>
+            <div class="field"><label>Starting km</label><input type="number" id="shoe-start-km" min="0" step="0.1" placeholder="0" /></div>
+            <div class="field"><label>Max km (recommended)</label><input type="number" id="shoe-max-km" min="0" step="10" placeholder="800" /></div>
           </div>
-          <div class="field">
-            <label>Notes</label>
-            <input type="text" id="shoe-notes" placeholder="Colour, size, etc." />
-          </div>
+          <div class="field"><label>Notes</label><input type="text" id="shoe-notes" placeholder="Colour, size, etc." /></div>
           <div style="display:flex;gap:10px">
             <button type="button" id="shoe-form-cancel" class="btn-discard" style="flex:1">Cancel</button>
             <button type="button" id="shoe-form-save" class="btn-finish" style="flex:2">Save shoe</button>
           </div>
         </div>
       </div>
-
       <div id="shoes-list" class="shoes-list"></div>
     </section>
 
