@@ -393,3 +393,25 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
   .run-pr-grid { grid-template-columns: repeat(2, 1fr); }
   .muscle-diagrams { flex: 0 0 96px; }
 }
+
+/* ── CUSTOM DATE PICKER ── */
+.date-picker-wrap {
+  position: relative;
+}
+.date-display {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-size: 0.9rem; padding: 9px 12px; width: 100%;
+  cursor: pointer; transition: border-color 0.15s;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.date-display::after {
+  content: "📅";
+  font-size: 0.9rem;
+}
+.date-display:hover { border-color: var(--accent); }
+.date-hidden {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  padding: 0; border: none; background: none;
+}
