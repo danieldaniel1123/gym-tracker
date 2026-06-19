@@ -303,7 +303,8 @@ document.addEventListener("DOMContentLoaded",async()=>{
   renderExerciseManagerList();
 });
 
-function setDefaultDates(){ const t=new Date().toISOString().split("T")[0]; $("w-date").value=t; $("r-date").value=t; }
+function setDefaultDates(){ const t=new Date().toISOString().split("T")[0]; $("w-date").value=t; $("r-date").value=t; updateDateDisplay("w-date","w-date-display"); updateDateDisplay("r-date","r-date-display"); }
+function updateDateDisplay(inputId,displayId){ const v=$(inputId).value; $(displayId).textContent=v?new Date(v+"T00:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}):"Select date"; }
 
 function populateDayDropdowns(){
   const s=$("w-day"); DAY_OPTIONS.forEach(d=>{ const o=document.createElement("option"); o.value=o.textContent=d; s.appendChild(o); });
@@ -345,7 +346,7 @@ function bindNav(){
 }
 
 /* ── WORKOUT SETUP ── */
-function bindWorkoutSetup(){
+function bindWorkoutSetup(){ $("w-date").addEventListener("change",()=>updateDateDisplay("w-date","w-date-display"));
   $("w-day").addEventListener("change",()=>{ $("start-session-btn").disabled=!$("w-day").value; });
   $("start-session-btn").addEventListener("click",startSession);
 }
@@ -582,7 +583,7 @@ function resetSession(){
 }
 
 /* ── RUN FORM ── */
-function bindRunForm(){
+function bindRunForm(){ $("r-date").addEventListener("change",()=>updateDateDisplay("r-date","r-date-display"));
   $("run-form").addEventListener("submit",saveRun);
   $("r-time").addEventListener("input",autoFormatTime);
   $("add-km-btn").addEventListener("click",addKmRow);
