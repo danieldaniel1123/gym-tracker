@@ -415,3 +415,130 @@ textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
   opacity: 0; cursor: pointer; width: 100%; height: 100%;
   padding: 0; border: none; background: none;
 }
+
+/* ── IPHONE 15 PRO MAX & GENERAL MOBILE (430px and below) ── */
+@media (max-width: 430px) {
+
+  /* Navbar — two rows: logo + theme on top, tabs on bottom */
+  .navbar {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    padding: 8px 12px 0;
+    gap: 0;
+  }
+  .navbar > .nav-logo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 6px;
+  }
+  .nav-links {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 2px;
+    padding-bottom: 6px;
+  }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    padding: 6px 10px;
+    white-space: nowrap;
+  }
+  .theme-toggle { flex-shrink: 0; }
+
+  /* Container */
+  .container { padding: 0.875rem 0.875rem; }
+
+  /* Forms — single column always */
+  .form-row { grid-template-columns: 1fr !important; gap: 0.75rem; }
+
+  /* Cards */
+  .card { padding: 1rem; }
+  .form-card { padding: 1rem; }
+
+  /* Session topbar */
+  .session-topbar { padding: 0.875rem 1rem; }
+  .session-day-label { font-size: 0.9rem; }
+  .timer-chip { font-size: 0.88rem; padding: 5px 10px; }
+
+  /* Exercise card muscle section — stack vertically on very small */
+  .muscle-section { flex-direction: column; }
+  .muscle-diagrams {
+    flex: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 10px;
+    justify-content: center;
+    flex-direction: row;
+    gap: 16px;
+  }
+  .muscle-legend { padding: 10px 12px; }
+
+  /* Sets table — tighter */
+  .sets-header { padding: 6px 12px; }
+  .set-row { padding: 6px 12px; }
+
+  /* Machine radios — wrap nicely */
+  .machine-radios { gap: 8px; }
+  .machine-radio-item { font-size: 0.8rem; }
+
+  /* KM table */
+  .km-table th, .km-table td { padding: 5px 4px; font-size: 0.78rem; }
+  .km-input { font-size: 0.78rem; padding: 4px 3px; }
+
+  /* Running PRs — 2 columns */
+  .run-pr-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .run-pr-card { padding: 8px 10px; }
+  .run-pr-time { font-size: 0.95rem; }
+
+  /* History session cards */
+  .session-card-header { padding: 10px 12px; }
+  .session-exercise-row { padding: 8px 12px; }
+  .session-run-detail { padding: 10px 12px; gap: 14px; }
+
+  /* Records */
+  .record-card { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .record-stats { text-align: left; gap: 1rem; }
+
+  /* Shoe cards */
+  .shoe-card-top { flex-direction: column; gap: 8px; }
+  .shoe-card-top > div:last-child { align-self: flex-start; }
+
+  /* Exercise manager tags */
+  .tag-chip { font-size: 0.7rem; padding: 2px 7px; }
+
+  /* Session actions */
+  .session-actions { flex-direction: column; }
+  .btn-discard, .btn-finish { width: 100%; }
+
+  /* PR strip */
+  .pr-strip { padding: 7px 12px; gap: 14px; }
+  .pr-value { font-size: 0.85rem; }
+
+  /* Toast — full width on mobile */
+  .toast {
+    left: 0.75rem;
+    right: 0.75rem;
+    transform: none;
+    text-align: center;
+    white-space: normal;
+  }
+
+  /* Date display */
+  .date-display { font-size: 0.85rem; padding: 8px 10px; }
+
+  /* Setup card header */
+  .setup-card-header { flex-wrap: wrap; gap: 8px; }
+  .exercises-mgr-btn { font-size: 0.75rem; padding: 5px 10px; }
+}
+
+/* Safe area for iPhone notch/home bar */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
+  .navbar { padding-top: max(8px, env(safe-area-inset-top)); }
+}
