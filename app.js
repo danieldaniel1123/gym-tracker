@@ -589,10 +589,19 @@ function bindRunForm(){ $("r-date").addEventListener("change",()=>updateDateDisp
   $("add-km-btn").addEventListener("click",addKmRow);
 }
 
-function autoFormatPace(e){
-  let v=e.target.value.replace(/\D/g,"");
-  if(v.length>=3) v=v.slice(0,2)+":"+v.slice(2,4);
-  e.target.value=v;
+function autoFormatPace(el){
+  const pos=el.selectionStart;
+  let v=el.value.replace(/[^0-9]/g,"");
+  if(v.length>4) v=v.slice(0,4);
+  if(v.length>=3) v=v.slice(0,2)+":"+v.slice(2);
+  el.value=v;
+}
+
+function deleteKmRow(idx){
+  kmRows.splice(idx,1);
+  kmRows.forEach((r,i)=>r.km=i+1);
+  if(!kmRows.length) $("km-table-wrap").classList.add("hidden");
+  else renderKmTable();
 }
 
 function autoFormatTime(e){
@@ -613,13 +622,10 @@ function renderKmTable(){
   tbody.innerHTML=kmRows.map((row,i)=>`
     <tr>
       <td class="km-cell-num">${i+1}</td>
-      <td><input class="km-input" type="text" placeholder="5:00" maxlength="5" value="${row.pace||""}" data-idx="${i}" data-field="pace" inputmode="numeric" /></td>
-      <td><input class="km-input" type="number" placeholder="150" min="0" max="250" value="${row.hr||""}" data-idx="${i}" data-field="hr" /></td>
-      <td><button class="km-del-btn" data-idx="${i}">✕</button></td>
+      <td><input class="km-input" type="text" placeholder="5:00" maxlength="5" value="${row.pace||""}" data-idx="${i}" data-field="pace" inputmode="numeric" oninput="autoFormatPace(this)" onchange="kmRows[${i}].pace=this.value" /></td>
+      <td><input class="km-input" type="number" placeholder="150" min="0" max="250" value="${row.hr||""}" data-idx="${i}" data-field="hr" onchange="kmRows[${i}].hr=this.value" /></td>
+      <td><button class="km-del-btn" onclick="deleteKmRow(${i})">✕</button></td>
     </tr>`).join("");
-
-  tbody.querySelectorAll(".km-input").forEach(inp=>{ inp.addEventListener("change",e=>{ const {idx,field}=e.target.dataset; kmRows[idx][field]=e.target.value; }); });
-  tbody.querySelectorAll(".km-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.idx); kmRows.splice(idx,1); kmRows.forEach((r,i)=>r.km=i+1); if(!kmRows.length) $("km-table-wrap").classList.add("hidden"); else renderKmTable(); }); });
 }
 
 async function saveRun(e){
