@@ -781,7 +781,7 @@ function renderShoes(){
 }
 
 /* ── UTILS ── */
-function formatDate(ds){ if(!ds)return""; return new Date(ds+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); }
+function formatDate(ds){ if(!ds)return""; return new Date(ds+"T00:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}); }
 function fmtDuration(sec){ const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60; return h>0?`${h}h ${m}m`:`${m}m ${s}s`; }
 function calcPace(timeStr,km){ const p=timeStr.split(":").map(Number); if(p.length<2||!km)return""; const t=(p[0]||0)*3600+(p[1]||0)*60+(p[2]||0); const spk=t/km; return `${Math.floor(spk/60)}:${String(Math.round(spk%60)).padStart(2,"0")}`; }
 function showToast(msg){ const t=$("toast"); t.textContent=msg; t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),2800); }
