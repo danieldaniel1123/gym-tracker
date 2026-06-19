@@ -1,5 +1,12 @@
 /* ══════════════════════════════════════════
-   MUSCLE COLOR MAP — one fixed color per group
+   SUPABASE CONFIG
+   ══════════════════════════════════════════ */
+const SUPABASE_URL = "https://nqsfgbbabvgebulgqjrb.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xc2ZnYmJhYnZnZWJ1bGdxanJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3ODU1NjIsImV4cCI6MjA5NzM2MTU2Mn0.ga9LykWsCsyzIpOsiAiIk4bkS7EeEvCEFwuHkp7At1U";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ══════════════════════════════════════════
+   MUSCLE COLOR MAP
    ══════════════════════════════════════════ */
 const MUSCLE_COLORS = {
   "Chest":              { fill: "#7F77DD", stroke: "#534AB7" },
@@ -34,7 +41,6 @@ const MUSCLE_COLORS = {
   "Lats":               { fill: "#EF9F27", stroke: "#BA7517" },
 };
 
-/* ── MUSCLE → SVG REGION MAP ── */
 const MUSCLE_REGION_MAP = {
   "Chest":              { front: ["chest"],        back: [] },
   "Chest (upper)":      { front: ["chest"],        back: [] },
@@ -68,7 +74,7 @@ const MUSCLE_REGION_MAP = {
   "Lats":               { front: [],               back: ["lats"] },
 };
 
-/* ── BUILD BODY SVG ── */
+/* ── SVG BODY BUILDER ── */
 function buildBodySVG(view, regionColorMap) {
   const BASE = "#2a2a2a", BSTR = "#3a3a3a";
   const rc = region => regionColorMap[region]
@@ -118,29 +124,23 @@ function buildBodySVG(view, regionColorMap) {
 }
 
 function buildMuscleDiagram(muscles) {
-  // Build region→color map for front and back
   const frontMap = {}, backMap = {};
   muscles.forEach(muscle => {
     const color  = MUSCLE_COLORS[muscle];
     const region = MUSCLE_REGION_MAP[muscle];
     if (!color || !region) return;
     region.front.forEach(r => { frontMap[r] = color; });
-    region.back.forEach(r => { backMap[r] = color; });
+    region.back.forEach(r  => { backMap[r]  = color; });
   });
-
   const hasFront = Object.keys(frontMap).length > 0;
-  const hasBack  = Object.keys(backMap).length > 0;
-
-  const frontSVG = buildBodySVG("front", frontMap);
-  const backSVG  = buildBodySVG("back",  backMap);
-
+  const hasBack  = Object.keys(backMap).length  > 0;
   return `
-    <div class="diagram-col" style="opacity:${hasFront ? 1 : 0.2}">
-      ${frontSVG}
+    <div class="diagram-col" style="opacity:${hasFront?1:0.2}">
+      ${buildBodySVG("front", frontMap)}
       <span class="view-label">Front</span>
     </div>
-    <div class="diagram-col" style="opacity:${hasBack ? 1 : 0.2}">
-      ${backSVG}
+    <div class="diagram-col" style="opacity:${hasBack?1:0.2}">
+      ${buildBodySVG("back", backMap)}
       <span class="view-label">Back</span>
     </div>`;
 }
@@ -211,23 +211,151 @@ const DAY_OPTIONS = [
   "Chest & Biceps","Arms","Shoulder","Full body","Upper body","Lower body"
 ];
 
-/* ── STORAGE ── */
-const load = key => JSON.parse(localStorage.getItem(key) || "[]");
-const save = (key, val) => localStorage.setItem(key, JSON.stringify(val));
+/* ══════════════════════════════════════════
+   IN-MEMORY STATE (populated from Supabase)
+   ══════════════════════════════════════════ */
+let workouts = [];
+let runs     = [];
+let shoes    = [];
 
-let workouts = load("gt_workouts");
-let runs     = load("gt_runs");
-let shoes    = load("gt_shoes");
-
-/* ── SESSION STATE ── */
-let session = { active: false, day: "", date: "", startTime: null, timerInterval: null, exercises: [] };
+let session = { active:false, day:"", date:"", startTime:null, timerInterval:null, exercises:[] };
 let expandedSessions = new Set();
 let editingShoeId = null;
 
 const $ = id => document.getElementById(id);
 
-/* ── INIT ── */
-document.addEventListener("DOMContentLoaded", () => {
+/* ══════════════════════════════════════════
+   SUPABASE DATA LAYER
+   ══════════════════════════════════════════ */
+async function loadAll() {
+  showLoadingOverlay(true);
+  try {
+    const [wRes, rRes, sRes] = await Promise.all([
+      db.from("workouts").select("*").order("created_at", { ascending: false }),
+      db.from("runs").select("*").order("created_at", { ascending: false }),
+      db.from("shoes").select("*").order("created_at", { ascending: true }),
+    ]);
+    workouts = (wRes.data || []).map(normalizeWorkout);
+    runs     = rRes.data  || [];
+    shoes    = sRes.data  || [];
+  } catch(e) {
+    console.error("Load error:", e);
+    showToast("Failed to load data — check connection");
+  }
+  showLoadingOverlay(false);
+}
+
+// Supabase uses snake_case columns — normalize to camelCase for the rest of the app
+function normalizeWorkout(w) {
+  return {
+    ...w,
+    sessionId:  w.session_id,
+    sets_detail: w.sets_detail || [],
+  };
+}
+
+async function insertWorkout(entry) {
+  const { error } = await db.from("workouts").insert({
+    id:          Math.floor(entry.id),
+    session_id:  entry.sessionId,
+    date:        entry.date,
+    day:         entry.day,
+    exercise:    entry.exercise,
+    muscles:     entry.muscles,
+    equipment:   entry.equipment,
+    sets_detail: entry.sets_detail,
+    sets:        entry.sets,
+    reps:        entry.reps,
+    weight:      entry.weight,
+    duration:    entry.duration,
+  });
+  if (error) throw error;
+}
+
+async function deleteWorkoutsBySession(sessionKey) {
+  // sessionKey is either the numeric sessionId or "date_day"
+  const isNumeric = /^\d+$/.test(sessionKey);
+  let query;
+  if (isNumeric) {
+    query = db.from("workouts").delete().eq("session_id", parseInt(sessionKey));
+  } else {
+    const [date, ...dayParts] = sessionKey.split("_");
+    const day = dayParts.join("_");
+    query = db.from("workouts").delete().eq("date", date).eq("day", day).is("session_id", null);
+  }
+  const { error } = await query;
+  if (error) throw error;
+}
+
+async function insertRun(entry) {
+  const { error } = await db.from("runs").insert({
+    id:        entry.id,
+    date:      entry.date,
+    distance:  entry.distance,
+    time:      entry.time,
+    location:  entry.location,
+    shoe_id:   entry.shoeId ? parseInt(entry.shoeId) : null,
+    shoe_name: entry.shoeName,
+    notes:     entry.notes,
+  });
+  if (error) throw error;
+}
+
+async function deleteRun(id) {
+  const { error } = await db.from("runs").delete().eq("id", id);
+  if (error) throw error;
+}
+
+async function insertShoe(shoe) {
+  const { data, error } = await db.from("shoes").insert({
+    id:     shoe.id,
+    brand:  shoe.brand,
+    model:  shoe.model,
+    km:     shoe.km || 0,
+    max_km: shoe.maxKm || null,
+    notes:  shoe.notes || null,
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function updateShoe(id, fields) {
+  const mapped = {};
+  if (fields.brand   !== undefined) mapped.brand   = fields.brand;
+  if (fields.model   !== undefined) mapped.model   = fields.model;
+  if (fields.km      !== undefined) mapped.km      = fields.km;
+  if (fields.maxKm   !== undefined) mapped.max_km  = fields.maxKm;
+  if (fields.notes   !== undefined) mapped.notes   = fields.notes;
+  const { error } = await db.from("shoes").update(mapped).eq("id", id);
+  if (error) throw error;
+}
+
+async function deleteShoe(id) {
+  const { error } = await db.from("shoes").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── LOADING OVERLAY ── */
+function showLoadingOverlay(show) {
+  let el = document.getElementById("loading-overlay");
+  if (show && !el) {
+    el = document.createElement("div");
+    el.id = "loading-overlay";
+    el.style.cssText = `
+      position:fixed;inset:0;background:rgba(15,15,15,0.85);
+      display:flex;align-items:center;justify-content:center;
+      z-index:9999;font-size:1rem;color:#888;flex-direction:column;gap:12px;`;
+    el.innerHTML = `<div style="font-size:2rem">⏳</div><div>Loading your data…</div>`;
+    document.body.appendChild(el);
+  } else if (!show && el) {
+    el.remove();
+  }
+}
+
+/* ══════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════ */
+document.addEventListener("DOMContentLoaded", async () => {
   setDefaultDates();
   populateDayDropdowns();
   bindNav();
@@ -238,6 +366,9 @@ document.addEventListener("DOMContentLoaded", () => {
   bindCalendar();
   bindRecords();
   bindShoes();
+
+  await loadAll();
+
   renderCalendar();
   renderHistory();
   renderRecords();
@@ -305,7 +436,7 @@ function bindWorkoutSetup() {
 function startSession() {
   const day = $("w-day").value, date = $("w-date").value;
   if (!day || !date) return;
-  session = { active: true, day, date, startTime: Date.now(), timerInterval: null, exercises: [] };
+  session = { active:true, day, date, startTime:Date.now(), timerInterval:null, exercises:[] };
   $("workout-setup").classList.add("hidden");
   $("workout-session").classList.remove("hidden");
   $("session-day-label").textContent = day;
@@ -345,15 +476,14 @@ function toggleExercisePicker() {
 function renderExercisePickerList() {
   const q = $("exercise-search").value.toLowerCase();
   const alreadyAdded = new Set(session.exercises.map(e => e.exData.name));
-
   const filtered = EXERCISE_DB
     .filter(e => e.days.includes(session.day))
-    .filter(e => !alreadyAdded.has(e.name))          // ← exclude already-added
+    .filter(e => !alreadyAdded.has(e.name))
     .filter(e => !q || e.name.toLowerCase().includes(q))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const list = $("exercise-picker-list");
-  if (filtered.length === 0) {
+  if (!filtered.length) {
     list.innerHTML = `<div style="padding:12px;color:var(--muted);font-size:0.85rem;text-align:center">
       ${alreadyAdded.size > 0 && !q ? "All exercises for this day have been added" : "No exercises found"}
     </div>`;
@@ -364,7 +494,6 @@ function renderExercisePickerList() {
       <div class="picker-item-name">${e.name}</div>
       <div class="picker-item-muscles">${e.muscles.slice(0,3).join(" · ")}</div>
     </div>`).join("");
-
   list.querySelectorAll(".picker-item").forEach(item => {
     item.addEventListener("click", () => {
       addExerciseToSession(item.dataset.name);
@@ -389,7 +518,7 @@ function addExerciseToSession(name) {
 }
 
 function getLastSessionSets(exerciseName) {
-  const matching = workouts.filter(w => w.exercise === exerciseName && w.sets_detail);
+  const matching = workouts.filter(w => w.exercise === exerciseName && w.sets_detail?.length);
   if (!matching.length) return [];
   matching.sort((a, b) => b.date.localeCompare(a.date));
   return matching[0].sets_detail || [];
@@ -454,33 +583,24 @@ function buildExerciseCard(item, idx) {
   const { exData, sets } = item;
   const pr = getPRInfo(exData.name);
   const diagramHTML = buildMuscleDiagram(exData.muscles);
-
   const legendHTML = exData.muscles.map(m => {
     const c = MUSCLE_COLORS[m] || { fill: "#888" };
     return `<div class="muscle-legend-row">
-      <span class="muscle-dot" style="background:${c.fill};width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block"></span>
-      ${m}
+      <span class="muscle-dot" style="background:${c.fill};width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block"></span>${m}
     </div>`;
   }).join("");
-
   const equipHTML = exData.equipment.map(e =>
     `<div class="equip-row"><span class="equip-dot"></span>${e}</div>`).join("");
-
   const prHTML = pr ? `
     <div class="pr-strip">
-      <div class="pr-item">
-        <span class="pr-label">Last session</span>
-        <span class="pr-value">${pr.lastWeight ? pr.lastWeight+"kg × "+pr.lastReps : "—"}</span>
-      </div>
+      <div class="pr-item"><span class="pr-label">Last session</span>
+        <span class="pr-value">${pr.lastWeight ? pr.lastWeight+"kg × "+pr.lastReps : "—"}</span></div>
       <div class="pr-divider"></div>
-      <div class="pr-item">
-        <span class="pr-label">All-time PR</span>
-        <span class="pr-value">${pr.prWeight ? pr.prWeight+"kg × "+pr.prReps : "—"}</span>
-      </div>
+      <div class="pr-item"><span class="pr-label">All-time PR</span>
+        <span class="pr-value">${pr.prWeight ? pr.prWeight+"kg × "+pr.prReps : "—"}</span></div>
     </div>` : "";
-
   const setsHTML = sets.map((set, sIdx) => `
-    <div class="set-row ${set.done ? "completed" : ""}">
+    <div class="set-row ${set.done?"completed":""}">
       <span class="set-num">${sIdx+1}</span>
       <input class="set-input" type="number" min="0" max="999" step="1"
         value="${set.reps||""}" placeholder="—"
@@ -492,60 +612,65 @@ function buildExerciseCard(item, idx) {
         data-ex-idx="${idx}" data-set-idx="${sIdx}">✓</button>
     </div>`).join("");
 
-  return `
-    <div class="exercise-card">
-      <div class="exercise-card-header">
-        <span class="exercise-card-name">${exData.name}</span>
-        <button class="exercise-card-del" data-ex-idx="${idx}">✕</button>
+  return `<div class="exercise-card">
+    <div class="exercise-card-header">
+      <span class="exercise-card-name">${exData.name}</span>
+      <button class="exercise-card-del" data-ex-idx="${idx}">✕</button>
+    </div>
+    <div class="muscle-section">
+      <div class="muscle-diagrams">${diagramHTML}</div>
+      <div class="muscle-legend">
+        <div class="muscle-legend-title">Muscles</div>
+        ${legendHTML}
+        <div class="equip-section">${equipHTML}</div>
       </div>
-      <div class="muscle-section">
-        <div class="muscle-diagrams">${diagramHTML}</div>
-        <div class="muscle-legend">
-          <div class="muscle-legend-title">Muscles</div>
-          ${legendHTML}
-          <div class="equip-section">${equipHTML}</div>
-        </div>
-      </div>
-      ${prHTML}
-      <div class="sets-header">
-        <span>Set</span><span>Reps</span><span>kg</span><span></span>
-      </div>
-      ${setsHTML}
-      <div class="add-set-row">
-        <button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button>
-      </div>
-    </div>`;
+    </div>
+    ${prHTML}
+    <div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span></div>
+    ${setsHTML}
+    <div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button></div>
+  </div>`;
 }
 
 /* ── FINISH / DISCARD ── */
-function finishSession() {
+async function finishSession() {
   clearInterval(session.timerInterval);
-  const duration = Math.floor((Date.now() - session.startTime) / 1000);
+  const duration  = Math.floor((Date.now() - session.startTime) / 1000);
   const sessionId = Date.now();
+  const toInsert  = [];
+
   session.exercises.forEach(item => {
     const completed = item.sets.filter(s => s.done || s.reps || s.weight);
     if (!completed.length) return;
-    workouts.unshift({
-      id: sessionId + Math.random(),
+    toInsert.push({
+      id:         sessionId + Math.random(),
       sessionId,
-      type: "workout",
-      date: session.date,
-      day: session.day,
-      exercise: item.exData.name,
-      muscles: item.exData.muscles,
-      equipment: item.exData.equipment,
-      sets_detail: completed,
-      sets: completed.length,
-      reps: completed[0]?.reps || null,
-      weight: completed[0]?.weight || null,
+      type:       "workout",
+      date:       session.date,
+      day:        session.day,
+      exercise:   item.exData.name,
+      muscles:    item.exData.muscles,
+      equipment:  item.exData.equipment,
+      sets_detail:completed,
+      sets:       completed.length,
+      reps:       completed[0]?.reps  || null,
+      weight:     completed[0]?.weight || null,
       duration,
     });
   });
-  save("gt_workouts", workouts);
-  showToast(`Session saved — ${session.exercises.length} exercise${session.exercises.length!==1?"s":""} logged 💪`);
-  resetSession();
-  renderCalendar();
-  renderRecords();
+
+  try {
+    await Promise.all(toInsert.map(e => insertWorkout(e)));
+    workouts = [...toInsert.map(normalizeWorkout), ...workouts];
+    showToast(`Session saved — ${toInsert.length} exercise${toInsert.length!==1?"s":""} logged 💪`);
+    resetSession();
+    renderCalendar();
+    renderRecords();
+    renderHistory();
+  } catch(e) {
+    console.error(e);
+    showToast("Error saving session — check connection");
+  }
 }
 
 function discardSession() {
@@ -567,36 +692,42 @@ function resetSession() {
 }
 
 /* ── RUN FORM ── */
-function bindRunForm() {
-  $("run-form").addEventListener("submit", saveRun);
-}
-function saveRun(e) {
+function bindRunForm() { $("run-form").addEventListener("submit", saveRun); }
+
+async function saveRun(e) {
   e.preventDefault();
   const shoeId = $("r-shoe").value;
-  const shoe = shoes.find(s => s.id == shoeId);
-  const dist = parseFloat($("r-distance").value) || 0;
-  const entry = {
-    id: Date.now(), type: "run",
-    date: $("r-date").value,
+  const shoe   = shoes.find(s => s.id == shoeId);
+  const dist   = parseFloat($("r-distance").value) || 0;
+  const entry  = {
+    id:       Date.now(),
+    type:     "run",
+    date:     $("r-date").value,
     distance: dist || null,
-    time: $("r-time").value.trim(),
+    time:     $("r-time").value.trim(),
     location: $("r-location").value.trim(),
-    shoeId: shoeId || null,
+    shoeId:   shoeId || null,
     shoeName: shoe ? `${shoe.brand} ${shoe.model}` : null,
-    notes: $("r-notes").value.trim(),
+    notes:    $("r-notes").value.trim(),
   };
-  runs.unshift(entry);
-  save("gt_runs", runs);
-  // Update shoe mileage
-  if (shoe && dist) {
-    shoe.km = (shoe.km || 0) + dist;
-    save("gt_shoes", shoes);
-    renderShoes();
+  try {
+    await insertRun(entry);
+    runs.unshift(entry);
+    if (shoe && dist) {
+      const newKm = (shoe.km || 0) + dist;
+      await updateShoe(shoe.id, { km: newKm });
+      shoe.km = newKm;
+      renderShoes();
+    }
+    showToast("Run saved! 🏃");
+    $("run-form").reset();
+    setDefaultDates();
+    renderCalendar();
+    renderHistory();
+  } catch(err) {
+    console.error(err);
+    showToast("Error saving run — check connection");
   }
-  showToast("Run saved! 🏃");
-  $("run-form").reset();
-  setDefaultDates();
-  renderCalendar();
 }
 
 /* ── HISTORY ── */
@@ -609,27 +740,24 @@ function renderHistory() {
   const typeFilter = $("filter-type").value;
   const dayFilter  = $("filter-day").value;
 
-  // Group workouts by sessionId + date + day
   const sessionMap = {};
   workouts.forEach(w => {
     if (typeFilter === "run") return;
     if (dayFilter !== "all" && w.day !== dayFilter) return;
     const key = w.sessionId ? String(w.sessionId) : `${w.date}_${w.day}`;
     if (!sessionMap[key]) {
-      sessionMap[key] = {
-        key, type: "workout", date: w.date, day: w.day,
-        duration: w.duration || null, exercises: []
-      };
+      sessionMap[key] = { key, type:"workout", date:w.date, day:w.day, duration:w.duration||null, exercises:[] };
     }
     sessionMap[key].exercises.push(w);
   });
 
   let items = Object.values(sessionMap).map(s => ({ ...s, _sort: s.date }));
-
   if (typeFilter !== "workout") {
-    runs.forEach(r => items.push({ ...r, _sort: r.date, type: "run" }));
+    runs.forEach(r => {
+      const rNorm = { ...r, shoeId: r.shoe_id || r.shoeId, shoeName: r.shoe_name || r.shoeName };
+      items.push({ ...rNorm, _sort: r.date, type:"run" });
+    });
   }
-
   items.sort((a, b) => b._sort.localeCompare(a._sort));
 
   const list = $("history-list");
@@ -649,7 +777,6 @@ function renderHistory() {
       renderHistory();
     });
   });
-
   list.querySelectorAll(".history-delete").forEach(btn => {
     btn.addEventListener("click", e => {
       e.stopPropagation();
@@ -661,11 +788,10 @@ function renderHistory() {
 function renderWorkoutSessionCard(s) {
   const key = s.key;
   const isOpen = expandedSessions.has(key);
-  const exNames = s.exercises.map(e => e.exercise);
   const dur = s.duration ? fmtDuration(s.duration) : null;
 
   const previewHTML = `<div class="session-card-preview">
-    ${exNames.map(n => `<span class="preview-pill">${n}</span>`).join("")}
+    ${s.exercises.map(e => `<span class="preview-pill">${e.exercise}</span>`).join("")}
   </div>`;
 
   const bodyHTML = `<div class="session-card-body">
@@ -710,22 +836,23 @@ function renderRunSessionCard(r) {
   const key = String(r.id);
   const isOpen = expandedSessions.has(key);
   const pace = r.distance && r.time ? calcPace(r.time, r.distance) : null;
+  const shoeName = r.shoeName || r.shoe_name;
 
   const previewHTML = `<div class="session-card-preview">
     ${r.location ? `<span class="preview-pill">📍 ${r.location}</span>` : ""}
     ${pace ? `<span class="preview-pill">${pace} /km pace</span>` : ""}
-    ${r.shoeName ? `<span class="preview-pill">👟 ${r.shoeName}</span>` : ""}
+    ${shoeName ? `<span class="preview-pill">👟 ${shoeName}</span>` : ""}
   </div>`;
 
   const bodyHTML = `<div class="session-card-body">
     <div class="session-run-detail">
       ${r.distance ? `<div class="session-run-stat"><div class="session-run-val">${r.distance} km</div><div class="session-run-lbl">Distance</div></div>` : ""}
-      ${r.time ? `<div class="session-run-stat"><div class="session-run-val">${r.time}</div><div class="session-run-lbl">Time</div></div>` : ""}
-      ${pace ? `<div class="session-run-stat"><div class="session-run-val">${pace}</div><div class="session-run-lbl">Pace /km</div></div>` : ""}
+      ${r.time     ? `<div class="session-run-stat"><div class="session-run-val">${r.time}</div><div class="session-run-lbl">Time</div></div>` : ""}
+      ${pace       ? `<div class="session-run-stat"><div class="session-run-val">${pace}</div><div class="session-run-lbl">Pace /km</div></div>` : ""}
     </div>
     ${r.location ? `<div style="padding:0 16px 8px;font-size:0.82rem;color:var(--muted)">📍 ${r.location}</div>` : ""}
-    ${r.shoeName ? `<div style="padding:0 16px 8px;font-size:0.82rem;color:var(--muted)">👟 ${r.shoeName}</div>` : ""}
-    ${r.notes ? `<div style="padding:0 16px 10px;font-size:0.82rem;color:var(--muted);font-style:italic">${r.notes}</div>` : ""}
+    ${shoeName   ? `<div style="padding:0 16px 8px;font-size:0.82rem;color:var(--muted)">👟 ${shoeName}</div>` : ""}
+    ${r.notes    ? `<div style="padding:0 16px 10px;font-size:0.82rem;color:var(--muted);font-style:italic">${r.notes}</div>` : ""}
     <div style="padding:8px 16px;text-align:right">
       <button class="history-delete" style="opacity:1;position:static;font-size:0.75rem;color:var(--muted)"
         data-id="${r.id}" data-type="run">Delete</button>
@@ -739,7 +866,7 @@ function renderRunSessionCard(r) {
         <div class="session-card-meta">
           <span class="session-card-date">${formatDate(r.date)}</span>
           ${r.distance ? `<span class="badge blue">${r.distance} km</span>` : ""}
-          ${r.time ? `<span class="badge">${r.time}</span>` : ""}
+          ${r.time     ? `<span class="badge">${r.time}</span>` : ""}
         </div>
       </div>
       <div class="session-card-right">
@@ -750,26 +877,38 @@ function renderRunSessionCard(r) {
   </div>`;
 }
 
-function deleteEntry(id, type, sessionId) {
-  if (type === "workout-session") {
-    workouts = workouts.filter(w => {
-      const wKey = w.sessionId ? String(w.sessionId) : `${w.date}_${w.day}`;
-      return wKey !== sessionId;
-    });
-    save("gt_workouts", workouts);
-  } else if (type === "run") {
-    const run = runs.find(r => String(r.id) === String(id));
-    if (run?.shoeId && run?.distance) {
-      const shoe = shoes.find(s => s.id == run.shoeId);
-      if (shoe) { shoe.km = Math.max(0, (shoe.km||0) - run.distance); save("gt_shoes", shoes); renderShoes(); }
+async function deleteEntry(id, type, sessionKey) {
+  try {
+    if (type === "workout-session") {
+      await deleteWorkoutsBySession(sessionKey);
+      workouts = workouts.filter(w => {
+        const wKey = w.sessionId ? String(w.sessionId) : `${w.date}_${w.day}`;
+        return wKey !== sessionKey;
+      });
+    } else if (type === "run") {
+      const run = runs.find(r => String(r.id) === String(id));
+      const shoeId = run?.shoe_id || run?.shoeId;
+      const dist   = run?.distance;
+      if (shoeId && dist) {
+        const shoe = shoes.find(s => s.id == shoeId);
+        if (shoe) {
+          const newKm = Math.max(0, (shoe.km||0) - dist);
+          await updateShoe(shoe.id, { km: newKm });
+          shoe.km = newKm;
+          renderShoes();
+        }
+      }
+      await deleteRun(id);
+      runs = runs.filter(r => String(r.id) !== String(id));
     }
-    runs = runs.filter(r => String(r.id) !== String(id));
-    save("gt_runs", runs);
+    expandedSessions.delete(sessionKey || id);
+    renderHistory();
+    renderRecords();
+    renderCalendar();
+  } catch(e) {
+    console.error(e);
+    showToast("Error deleting — check connection");
   }
-  expandedSessions.delete(sessionId || id);
-  renderHistory();
-  renderRecords();
-  renderCalendar();
 }
 
 /* ── CALENDAR ── */
@@ -881,50 +1020,42 @@ function bindShoes() {
   $("add-shoe-btn").addEventListener("click", () => {
     editingShoeId = null;
     $("shoe-form-title").textContent = "Add shoe";
-    $("shoe-brand").value = "";
-    $("shoe-model").value = "";
-    $("shoe-start-km").value = "";
-    $("shoe-max-km").value = "800";
-    $("shoe-notes").value = "";
+    $("shoe-brand").value = ""; $("shoe-model").value = "";
+    $("shoe-start-km").value = ""; $("shoe-max-km").value = "800"; $("shoe-notes").value = "";
     $("shoe-form-wrap").classList.remove("hidden");
     $("shoe-brand").focus();
   });
   $("shoe-form-cancel").addEventListener("click", () => {
-    $("shoe-form-wrap").classList.add("hidden");
-    editingShoeId = null;
+    $("shoe-form-wrap").classList.add("hidden"); editingShoeId = null;
   });
   $("shoe-form-save").addEventListener("click", saveShoe);
 }
 
-function saveShoe() {
+async function saveShoe() {
   const brand = $("shoe-brand").value.trim();
   const model = $("shoe-model").value.trim();
   if (!brand || !model) { showToast("Please enter brand and model"); return; }
 
-  if (editingShoeId) {
-    const shoe = shoes.find(s => s.id === editingShoeId);
-    if (shoe) {
-      shoe.brand   = brand;
-      shoe.model   = model;
-      shoe.maxKm   = parseFloat($("shoe-max-km").value) || null;
-      shoe.notes   = $("shoe-notes").value.trim();
+  try {
+    if (editingShoeId) {
+      const fields = { brand, model, maxKm: parseFloat($("shoe-max-km").value)||null, notes: $("shoe-notes").value.trim() };
+      await updateShoe(editingShoeId, fields);
+      const shoe = shoes.find(s => s.id === editingShoeId);
+      if (shoe) { shoe.brand=brand; shoe.model=model; shoe.max_km=fields.maxKm; shoe.notes=fields.notes; }
+    } else {
+      const newShoe = { id: Date.now(), brand, model, km: parseFloat($("shoe-start-km").value)||0, maxKm: parseFloat($("shoe-max-km").value)||null, notes: $("shoe-notes").value.trim() };
+      await insertShoe(newShoe);
+      shoes.push({ ...newShoe, max_km: newShoe.maxKm });
     }
-  } else {
-    shoes.push({
-      id:      Date.now(),
-      brand,
-      model,
-      km:      parseFloat($("shoe-start-km").value) || 0,
-      maxKm:   parseFloat($("shoe-max-km").value) || null,
-      notes:   $("shoe-notes").value.trim(),
-    });
+    $("shoe-form-wrap").classList.add("hidden");
+    editingShoeId = null;
+    renderShoes();
+    populateShoeDropdown();
+    showToast(editingShoeId ? "Shoe updated 👟" : "Shoe added 👟");
+  } catch(e) {
+    console.error(e);
+    showToast("Error saving shoe — check connection");
   }
-  save("gt_shoes", shoes);
-  $("shoe-form-wrap").classList.add("hidden");
-  editingShoeId = null;
-  renderShoes();
-  populateShoeDropdown();
-  showToast(editingShoeId ? "Shoe updated 👟" : "Shoe added 👟");
 }
 
 function renderShoes() {
@@ -935,10 +1066,9 @@ function renderShoes() {
   }
   list.innerHTML = shoes.map(shoe => {
     const km    = shoe.km || 0;
-    const maxKm = shoe.maxKm || 800;
+    const maxKm = shoe.max_km || shoe.maxKm || 800;
     const pct   = Math.min(100, Math.round((km / maxKm) * 100));
     const cls   = pct >= 90 ? "danger" : pct >= 70 ? "warning" : "ok";
-
     return `<div class="shoe-card">
       <div class="shoe-card-top">
         <div>
@@ -946,9 +1076,9 @@ function renderShoes() {
           ${shoe.notes ? `<div class="shoe-card-notes">${shoe.notes}</div>` : ""}
         </div>
         <div style="display:flex;gap:6px;align-items:center">
-          <button class="shoe-card-del" style="color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:0.78rem;cursor:pointer"
+          <button class="shoe-edit-btn" style="color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:0.78rem;cursor:pointer"
             data-id="${shoe.id}">Edit</button>
-          <button class="shoe-card-del" data-id="${shoe.id}" data-delete="true">Delete</button>
+          <button class="shoe-del-btn shoe-card-del" data-id="${shoe.id}">Delete</button>
         </div>
       </div>
       <div class="shoe-km-bar-wrap">
@@ -964,17 +1094,19 @@ function renderShoes() {
     </div>`;
   }).join("");
 
-  list.querySelectorAll(".shoe-card-del[data-delete]").forEach(btn => {
-    btn.addEventListener("click", () => {
+  list.querySelectorAll(".shoe-del-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
       if (!confirm("Delete this shoe?")) return;
-      shoes = shoes.filter(s => s.id != btn.dataset.id);
-      save("gt_shoes", shoes);
-      renderShoes();
-      populateShoeDropdown();
+      try {
+        await deleteShoe(btn.dataset.id);
+        shoes = shoes.filter(s => s.id != btn.dataset.id);
+        renderShoes();
+        populateShoeDropdown();
+      } catch(e) { showToast("Error deleting shoe"); }
     });
   });
 
-  list.querySelectorAll(".shoe-card-del:not([data-delete])").forEach(btn => {
+  list.querySelectorAll(".shoe-edit-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const shoe = shoes.find(s => s.id == btn.dataset.id);
       if (!shoe) return;
@@ -983,7 +1115,7 @@ function renderShoes() {
       $("shoe-brand").value   = shoe.brand;
       $("shoe-model").value   = shoe.model;
       $("shoe-start-km").value = shoe.km || 0;
-      $("shoe-max-km").value  = shoe.maxKm || 800;
+      $("shoe-max-km").value  = shoe.max_km || shoe.maxKm || 800;
       $("shoe-notes").value   = shoe.notes || "";
       $("shoe-form-wrap").classList.remove("hidden");
       $("shoe-brand").focus();
@@ -997,7 +1129,7 @@ function formatDate(ds) {
   return new Date(ds+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
 }
 function fmtDuration(sec) {
-  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
   return h>0?`${h}h ${m}m`:`${m}m ${s}s`;
 }
 function calcPace(timeStr,km) {
