@@ -589,6 +589,12 @@ function bindRunForm(){ $("r-date").addEventListener("change",()=>updateDateDisp
   $("add-km-btn").addEventListener("click",addKmRow);
 }
 
+function autoFormatPace(e){
+  let v=e.target.value.replace(/\D/g,"");
+  if(v.length>=3) v=v.slice(0,2)+":"+v.slice(2,4);
+  e.target.value=v;
+}
+
 function autoFormatTime(e){
   let v=e.target.value.replace(/\D/g,"");
   if(v.length>=5) v=v.slice(0,2)+":"+v.slice(2,4)+":"+v.slice(4,6);
