@@ -358,3 +358,39 @@ textarea { resize:vertical; min-height:72px; line-height:1.5; }
   body { padding-bottom:calc(2rem + env(safe-area-inset-bottom)); }
   .navbar { padding-top:max(8px,env(safe-area-inset-top)); }
 }
+
+/* ── SAVE EXERCISE BUTTON ── */
+.save-ex-row { padding: 8px 16px; border-top: 1px solid var(--border); }
+.exercise-save-btn {
+  width: 100%; background: var(--success); color: #fff;
+  border: none; border-radius: 6px; padding: 9px;
+  font-size: 0.88rem; font-weight: 700; cursor: pointer;
+  transition: filter 0.15s;
+}
+.exercise-save-btn:hover { filter: brightness(1.1); }
+
+/* ── ADD KM BELOW TABLE ── */
+.add-km-cell { padding: 7px 10px; border-top: 1px solid var(--border); }
+.add-km-below {
+  width: 100%; background: none; color: var(--muted);
+  border: 1px dashed var(--border); border-radius: 6px;
+  padding: 6px; font-size: 0.82rem; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.add-km-below:hover { color: var(--text); border-color: var(--muted); }
+.add-km-below:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── RUN STATS 2x2 GRID ── */
+.run-stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.run-stat-cell {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 12px 8px; gap: 3px; text-align: center;
+}
+.run-stat-cell:nth-child(1) { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.run-stat-cell:nth-child(2) { border-bottom: 1px solid var(--border); }
+.run-stat-cell:nth-child(3) { border-right: 1px solid var(--border); }
+.run-stat-val { font-size: 1rem; font-weight: 700; color: var(--text); }
+.run-stat-lbl { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
