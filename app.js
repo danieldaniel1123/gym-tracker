@@ -684,18 +684,20 @@ function renderHistory(){
     if(tf==="run") return;
     if(df!=="all"&&w.day!==df) return;
     const key=w.sessionId?String(w.sessionId):`${w.date}_${w.day}`;
-    if(!sessionMap[key]) sessionMap[key]={key,type:"workout",date:w.date,day:w.day,duration:w.duration||null,exercises:[],_sort:w.date+"_"+(w.sessionId||w.date)};
+    if(!sessionMap[key]) sessionMap[key]={key,type:"workout",date:w.date,_date:w.date,day:w.day,duration:w.duration||null,exercises:[],_sort:w.date+"_"+(w.sessionId||w.date)};
     sessionMap[key].exercises.push(w);
   });
 
   // Build flat list — workouts and runs interleaved, sorted by date desc
   let items=Object.values(sessionMap);
-  if(tf!=="workout") runs.forEach(r=>{ const rn={...r,shoeId:r.shoe_id||r.shoeId,shoeName:r.shoe_name||r.shoeName}; items.push({...rn,_sort:r.date+"_"+r.id,type:"run"}); });
+  if(tf!=="workout") runs.forEach(r=>{ const rn={...r,shoeId:r.shoe_id||r.shoeId,shoeName:r.shoe_name||r.shoeName}; items.push({...rn,_date:r.date,_sort:r.date+"_"+r.id,type:"run"}); });
+  // Ensure all items have _date
+  items.forEach(item=>{ if(!item._date) item._date=item.date; });
   items.sort((a,b)=>b._sort.localeCompare(a._sort));
 
-  // Group by date
+  // Group by actual date (not sort key)
   const byDate={};
-  items.forEach(item=>{ if(!byDate[item._sort]) byDate[item._sort]=[]; byDate[item._sort].push(item); });
+  items.forEach(item=>{ const d=item._date||item.date; if(!byDate[d]) byDate[d]=[]; byDate[d].push(item); });
 
   const list=$("history-list");
   if(!items.length){ list.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>No entries yet. Start logging!</p></div>`; return; }
