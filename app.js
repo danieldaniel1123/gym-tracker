@@ -253,7 +253,7 @@ function mergeExercises(){
 }
 
 async function insertWorkout(e){
-  const {error}=await db.from("workouts").insert({id:Math.floor(e.id),session_id:e.sessionId,date:e.date,day:e.day,exercise:e.exercise,muscles:e.muscles,equipment:e.equipment,sets_detail:e.sets_detail,sets:e.sets,reps:e.reps,weight:e.weight,duration:e.duration,machine_used:e.machineUsed||null});
+  const {error}=await db.from("workouts").upsert({id:Math.floor(e.id),session_id:e.sessionId,date:e.date,day:e.day,exercise:e.exercise,muscles:e.muscles,equipment:e.equipment,sets_detail:e.sets_detail,sets:e.sets,reps:e.reps,weight:e.weight,duration:e.duration,machine_used:e.machineUsed||null});
   if(error) throw error;
 }
 async function deleteWorkoutsBySession(key){
@@ -456,6 +456,9 @@ function bindExerciseCardEvents(){
   list.querySelectorAll(".set-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const {exIdx,setIdx}=e.target.dataset; session.exercises[exIdx].sets.splice(parseInt(setIdx),1); saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".exercise-card-del,.collapsed-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ session.exercises.splice(parseInt(e.target.dataset.exIdx),1); saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".exercise-save-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].collapsed=true; saveSessionToLocal(); renderExerciseList(); }); });
+  // Disable finish button while saving to prevent double tap
+  const finishBtn=$('finish-session-btn');
+  if(finishBtn) finishBtn.addEventListener('click',()=>{ finishBtn.disabled=true; finishBtn.textContent='Saving…'; });
   list.querySelectorAll(".collapsed-expand-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].collapsed=false; saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".machine-radio").forEach(radio=>{ radio.addEventListener("change",e=>{ const {exIdx}=e.target.dataset; session.exercises[exIdx].machineUsed=e.target.value; saveSessionToLocal(); }); });
 }
@@ -524,7 +527,10 @@ function buildCollapsedCard(item,idx){
 }
 
 /* FINISH / DISCARD */
+let _finishing=false;
 async function finishSession(){
+  if(_finishing) return;
+  _finishing=true;
   clearInterval(session.timerInterval);
   const duration=Math.floor((Date.now()-session.startTime)/1000);
   const sessionId=Date.now();
@@ -532,18 +538,17 @@ async function finishSession(){
   session.exercises.forEach(item=>{
     const completed=item.sets.filter(s=>s.done||s.reps||s.weight);
     if(!completed.length) return;
-    toInsert.push({id:sessionId+Math.random(),sessionId,type:"workout",date:session.date,day:session.day,exercise:item.exData.name,muscles:item.exData.muscles,equipment:item.exData.equipment,sets_detail:completed,sets:completed.length,reps:completed[0]?.reps||null,weight:completed[0]?.weight||null,duration,machineUsed:item.machineUsed||null});
+    toInsert.push({id:sessionId*1000+toInsert.length+Math.floor(Math.random()*100),sessionId,type:"workout",date:session.date,day:session.day,exercise:item.exData.name,muscles:item.exData.muscles,equipment:item.exData.equipment,sets_detail:completed,sets:completed.length,reps:completed[0]?.reps||null,weight:completed[0]?.weight||null,duration,machineUsed:item.machineUsed||null});
   });
   // Save first, then update UI
   let saveSuccess=false;
   try{
-    // Check for duplicates
-    const existingIds=new Set(workouts.map(w=>Math.floor(w.id)));
-    const newEntries=toInsert.filter(e=>!existingIds.has(Math.floor(e.id)));
-    if(newEntries.length>0) await Promise.all(newEntries.map(e=>insertWorkout(e)));
+    // Insert with upsert to handle any duplicates gracefully
+    await Promise.all(toInsert.map(e=>insertWorkout(e)));
     workouts=[...toInsert.map(normalizeWorkout),...workouts];
     saveSuccess=true;
-  } catch(e){ console.error(e); showToast("Error saving — check connection"); }
+  } catch(e){ console.error(e); _finishing=false; showToast("Error saving — check connection"); }
+  _finishing=false;
   if(saveSuccess){
     clearSessionLocal();
     showToast(`Session saved — ${toInsert.length} exercise${toInsert.length!==1?"s":""} logged 💪`);
