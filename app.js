@@ -413,7 +413,13 @@ function bindSessionControls(){
   $("add-exercise-btn").addEventListener("click",toggleExercisePicker);
   $("exercise-search").addEventListener("input",renderExercisePickerList);
   $("discard-session-btn").addEventListener("click",discardSession);
-  $("finish-session-btn").addEventListener("click",finishSession);
+  $("finish-session-btn").addEventListener("click",async()=>{
+    const btn=$("finish-session-btn");
+    if(btn.disabled) return;
+    btn.disabled=true; btn.textContent="Saving…";
+    await finishSession();
+    btn.disabled=false; btn.textContent="Finish session";
+  });
 }
 function toggleExercisePicker(){ const p=$("exercise-picker"); const hidden=p.classList.contains("hidden"); p.classList.toggle("hidden",!hidden); if(hidden){ $("exercise-search").value=""; renderExercisePickerList(); $("exercise-search").focus(); } }
 function renderExercisePickerList(){ const q=$("exercise-search").value.toLowerCase(); const added=new Set(session.exercises.map(e=>e.exData.name)); const filtered=allExercises.filter(e=>e.days.includes(session.day)&&!added.has(e.name)&&(!q||e.name.toLowerCase().includes(q))); const list=$("exercise-picker-list"); if(!filtered.length){ list.innerHTML=`<div style="padding:12px;color:var(--muted);font-size:0.85rem;text-align:center">${added.size>0&&!q?"All exercises added":"No exercises found"}</div>`; return; } list.innerHTML=filtered.map(e=>`<div class="picker-item" data-name="${e.name}"><div class="picker-item-name">${e.name}</div><div class="picker-item-muscles">${(e.muscles||[]).slice(0,3).join(" · ")}</div></div>`).join(""); list.querySelectorAll(".picker-item").forEach(item=>{ item.addEventListener("click",()=>{ addExerciseToSession(item.dataset.name); $("exercise-picker").classList.add("hidden"); }); }); }
@@ -456,9 +462,7 @@ function bindExerciseCardEvents(){
   list.querySelectorAll(".set-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const {exIdx,setIdx}=e.target.dataset; session.exercises[exIdx].sets.splice(parseInt(setIdx),1); saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".exercise-card-del,.collapsed-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ session.exercises.splice(parseInt(e.target.dataset.exIdx),1); saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".exercise-save-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].collapsed=true; saveSessionToLocal(); renderExerciseList(); }); });
-  // Disable finish button while saving to prevent double tap
-  const finishBtn=$('finish-session-btn');
-  if(finishBtn) finishBtn.addEventListener('click',()=>{ finishBtn.disabled=true; finishBtn.textContent='Saving…'; });
+
   list.querySelectorAll(".collapsed-expand-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].collapsed=false; saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".machine-radio").forEach(radio=>{ radio.addEventListener("change",e=>{ const {exIdx}=e.target.dataset; session.exercises[exIdx].machineUsed=e.target.value; saveSessionToLocal(); }); });
 }
