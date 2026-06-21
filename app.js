@@ -478,7 +478,7 @@ function buildExerciseCard(item,idx){
   else if(equipList.length>1) machineHTML=`<div class="machine-section"><div class="machine-label">Equipment used</div><div class="machine-radios">${equipList.map(eq=>`<label class="machine-radio-item"><input type="radio" class="machine-radio" name="machine_${idx}" value="${eq}" data-ex-idx="${idx}" ${(machineUsed||equipList[0])===eq?"checked":""}>${eq}</label>`).join("")}</div></div>`;
   const prHTML=pr?`<div class="pr-strip"><div class="pr-item"><span class="pr-label">Last session</span><span class="pr-value">${pr.lastWeight?pr.lastWeight+"kg × "+pr.lastReps:"—"}</span></div><div class="pr-divider"></div><div class="pr-item"><span class="pr-label">All-time PR</span><span class="pr-value">${pr.prWeight?pr.prWeight+"kg × "+pr.prReps:"—"}</span></div></div>`:"";
   const setsHTML=sets.map((set,sIdx)=>`<div class="set-row ${set.done?"completed":""}"><span class="set-num">${sIdx+1}</span><input class="set-input" type="number" min="0" max="999" step="1" value="${set.reps||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="reps"/><input class="set-input" type="number" min="0" max="9999" step="0.5" value="${set.weight||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="weight"/><button class="set-check ${set.done?"done":""}" data-ex-idx="${idx}" data-set-idx="${sIdx}">✓</button><button class="set-del-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}" title="Remove set">✕</button></div>`).join("");
-  return `<div class="exercise-card"><div class="exercise-card-header"><span class="exercise-card-name">${exData.name}</span><div class="exercise-card-actions"><button class="exercise-save-btn" data-ex-idx="${idx}">Save</button><button class="exercise-card-del" data-ex-idx="${idx}">✕</button></div></div><div class="muscle-section"><div class="muscle-diagrams">${diagramHTML}</div><div class="muscle-legend"><div class="muscle-legend-title">Muscles</div>${legendHTML}<div class="equip-section">${(exData.equipment||[]).map(e=>`<div class="equip-row"><span class="equip-dot"></span>${e}</div>`).join("")}</div></div></div>${machineHTML}${prHTML}<div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span><span></span></div>${setsHTML}<div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button></div></div>`;
+  return `<div class="exercise-card"><div class="exercise-card-header"><span class="exercise-card-name">${exData.name}</span><div class="exercise-card-actions"><button class="exercise-card-del" data-ex-idx="${idx}">✕</button></div></div><div class="muscle-section"><div class="muscle-diagrams">${diagramHTML}</div><div class="muscle-legend"><div class="muscle-legend-title">Muscles</div>${legendHTML}<div class="equip-section">${(exData.equipment||[]).map(e=>`<div class="equip-row"><span class="equip-dot"></span>${e}</div>`).join("")}</div></div></div>${machineHTML}${prHTML}<div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span><span></span></div>${setsHTML}<div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button></div><div class="save-ex-row"><button class="exercise-save-btn" data-ex-idx="${idx}">✓ Save exercise</button></div></div>`;
 }
 
 function buildCollapsedCard(item,idx){
@@ -584,11 +584,20 @@ function getMaxKmRows(){
   return hasPartial?full+1:full;
 }
 function updateKmBtnState(){
+  const dist=parseFloat($("r-distance").value)||0;
   const max=getMaxKmRows();
   const btn=$("add-km-btn");
-  if(!max){ btn.disabled=true; btn.title="Enter distance first"; }
-  else if(kmRows.length>=max){ btn.disabled=true; btn.title="Max km reached"; }
-  else { btn.disabled=false; btn.title=""; }
+  if(!btn) return;
+  if(!dist||!max){ btn.disabled=true; btn.textContent="+ Add km (enter distance first)"; }
+  else if(kmRows.length>=max){ btn.disabled=true; btn.textContent="All km added"; }
+  else {
+    btn.disabled=false;
+    const nextNum=kmRows.length+1;
+    const full=Math.floor(dist);
+    const isPartial=nextNum>full;
+    const label=isPartial?dist:nextNum;
+    btn.textContent=`+ Add km ${label}`;
+  }
 }
 function addKmRow(){
   const dist=parseFloat($("r-distance").value)||0;
@@ -600,7 +609,6 @@ function addKmRow(){
   const isPartial=nextNum>full;
   const label=isPartial?dist:nextNum;
   kmRows.push({km:label,partial:isPartial,pace:"",hr:""});
-  $("km-table-wrap").classList.remove("hidden");
   renderKmTable();
   updateKmBtnState();
 }
@@ -614,7 +622,7 @@ function renderKmTable(){
       <td><button class="km-del-btn" onclick="deleteKmRow(${i})">✕</button></td>
     </tr>`).join("");
 }
-function deleteKmRow(idx){ kmRows.splice(idx,1); const dist=parseFloat($("r-distance").value)||0; const full=Math.floor(dist); kmRows.forEach((r,i)=>{ r.km=i+1>full?dist:i+1; r.partial=i+1>full; }); if(!kmRows.length) $("km-table-wrap").classList.add("hidden"); else renderKmTable(); updateKmBtnState(); }
+function deleteKmRow(idx){ kmRows.splice(idx,1); const dist=parseFloat($("r-distance").value)||0; const full=Math.floor(dist); kmRows.forEach((r,i)=>{ r.km=i+1>full?dist:i+1; r.partial=i+1>full; }); renderKmTable(); updateKmBtnState(); }
 
 async function saveRun(e){
   e.preventDefault();
@@ -625,7 +633,7 @@ async function saveRun(e){
   try{
     await insertRun(entry); runs.unshift(entry);
     if(shoe&&dist){ const newKm=(shoe.km||0)+dist; await updateShoe(shoe.id,{km:newKm}); shoe.km=newKm; renderShoes(); }
-    showToast("Run saved! 🏃"); $("run-form").reset(); kmRows=[]; $("km-tbody").innerHTML=""; $("km-table-wrap").classList.add("hidden"); setDefaultDates(); updateKmBtnState(); renderCalendar(); renderHistory(); renderRunPRs();
+    showToast("Run saved! 🏃"); $("run-form").reset(); kmRows=[]; $("km-tbody").innerHTML=""; setDefaultDates(); updateKmBtnState(); renderCalendar(); renderHistory(); renderRunPRs();
   } catch(err){ console.error(err); showToast("Error saving run — check connection"); }
 }
 
@@ -724,7 +732,37 @@ function renderRunSessionCard(r){
   const splits=r.km_splits||r.kmSplits||[];
   const previewHTML=`<div class="session-card-preview">${r.location?`<span class="preview-pill">📍 ${r.location}</span>`:""} ${pace?`<span class="preview-pill">${pace} /km</span>`:""} ${sn?`<span class="preview-pill">👟 ${sn}</span>`:""}</div>`;
   const splitsHTML=splits.length?`<div style="padding:0 16px 10px"><table class="km-table" style="font-size:0.78rem"><thead><tr><th>Km</th><th>Pace</th><th>HR</th></tr></thead><tbody>${splits.map(s=>`<tr><td class="km-cell-num ${s.km!==Math.floor(s.km)?"partial":""}">${s.km}</td><td style="padding:4px 8px;text-align:center">${s.pace||"—"}</td><td style="padding:4px 8px;text-align:center">${s.hr||"—"}</td></tr>`).join("")}</tbody></table></div>`:"";
-  const bodyHTML=`<div class="session-card-body"><div class="session-run-detail">${r.distance?`<div class="session-run-stat"><div class="session-run-val">${r.distance} km</div><div class="session-run-lbl">Distance</div></div>`:""} ${r.time?`<div class="session-run-stat"><div class="session-run-val">${r.time}</div><div class="session-run-lbl">Time</div></div>`:""} ${pace?`<div class="session-run-stat"><div class="session-run-val">${pace}</div><div class="session-run-lbl">Pace /km</div></div>`:""}</div>${r.location?`<div style="padding:0 16px 8px;font-size:0.82rem;color:var(--muted)">📍 ${r.location}</div>`:""} ${sn?`<div style="padding:0 16px 8px;font-size:0.82rem;color:var(--muted)">👟 ${sn}</div>`:""} ${splitsHTML} ${r.notes?`<div style="padding:0 16px 10px;font-size:0.82rem;color:var(--muted);font-style:italic">${r.notes}</div>`:""}<div style="padding:8px 16px;text-align:right"><button class="history-delete" style="opacity:1;position:static;font-size:0.75rem;color:var(--muted)" data-id="${r.id}" data-type="run">Delete</button></div></div>`;
+  // Compute avg HR from splits
+  const splits2=r.km_splits||r.kmSplits||[];
+  const hrs2=splits2.map(s=>s.hr).filter(Boolean);
+  const avgHR2=hrs2.length?Math.round(hrs2.reduce((a,b)=>a+b,0)/hrs2.length):null;
+  const bodyHTML=`<div class="session-card-body">
+    <div class="run-stats-grid">
+      <div class="run-stat-cell">
+        <div class="run-stat-val">${r.distance?r.distance+" km":"—"}</div>
+        <div class="run-stat-lbl">Distance</div>
+      </div>
+      <div class="run-stat-cell">
+        <div class="run-stat-val">${r.time||"—"}</div>
+        <div class="run-stat-lbl">Time</div>
+      </div>
+      <div class="run-stat-cell">
+        <div class="run-stat-val">${pace||"—"}</div>
+        <div class="run-stat-lbl">Avg pace /km</div>
+      </div>
+      <div class="run-stat-cell">
+        <div class="run-stat-val">${avgHR2?avgHR2+" bpm":"—"}</div>
+        <div class="run-stat-lbl">Avg HR</div>
+      </div>
+    </div>
+    ${r.location?`<div style="padding:8px 16px;font-size:0.82rem;color:var(--muted);border-top:1px solid var(--border)">📍 ${r.location}</div>`:""}
+    ${sn?`<div style="padding:4px 16px 8px;font-size:0.82rem;color:var(--muted)">👟 ${sn}</div>`:""}
+    ${splitsHTML}
+    ${r.notes?`<div style="padding:8px 16px 10px;font-size:0.82rem;color:var(--muted);font-style:italic;border-top:1px solid var(--border)">${r.notes}</div>`:""}
+    <div style="padding:8px 16px;text-align:right;border-top:1px solid var(--border)">
+      <button class="history-delete" style="opacity:1;position:static;font-size:0.75rem;color:var(--muted)" data-id="${r.id}" data-type="run">Delete</button>
+    </div>
+  </div>`;
   return `<div class="session-card run-session"><div class="session-card-header" data-key="${key}"><div class="session-card-left"><div class="session-card-title">🏃 Run</div><div class="session-card-meta">${r.distance?`<span class="badge blue">${r.distance} km</span>`:""} ${r.time?`<span class="badge">${r.time}</span>`:""}</div></div><div class="session-card-right"><span class="session-chevron ${isOpen?"open":""}">▾</span></div></div>${isOpen?bodyHTML:previewHTML}</div>`;
 }
 
