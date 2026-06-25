@@ -787,16 +787,16 @@ function renderRunDayItem(r){
   const sn=r.shoeName||r.shoe_name;
   return `<div class="day-item run-item">
     <div class="day-item-header">
-      <div class="day-item-title">🏃 Run</div>
+      <div class="day-item-title">Run</div>
       <button class="history-delete" style="opacity:1;position:static;font-size:0.72rem;color:var(--muted)" data-id="${r.id}" data-type="run">Delete</button>
     </div>
-    <div class="run-stats-grid" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:6px">
-      <div class="run-stat-cell" style="border-right:1px solid var(--border);border-bottom:1px solid var(--border)"><div class="run-stat-val">${r.distance?r.distance+" km":"—"}</div><div class="run-stat-lbl">Distance</div></div>
-      <div class="run-stat-cell" style="border-bottom:1px solid var(--border)"><div class="run-stat-val">${r.time||"—"}</div><div class="run-stat-lbl">Time</div></div>
-      <div class="run-stat-cell" style="border-right:1px solid var(--border)"><div class="run-stat-val">${pace||"—"}</div><div class="run-stat-lbl">Avg pace /km</div></div>
-      <div class="run-stat-cell"><div class="run-stat-val">${avgHR?avgHR+" bpm":"—"}</div><div class="run-stat-lbl">Avg HR</div></div>
+    <div class="run-kv">
+      <div class="run-kv-item"><div class="run-kv-val">${r.distance?r.distance+" km":"—"}</div><div class="run-kv-lbl">Distance</div></div>
+      <div class="run-kv-item"><div class="run-kv-val">${r.time||"—"}</div><div class="run-kv-lbl">Time</div></div>
+      <div class="run-kv-item"><div class="run-kv-val">${pace||"—"}</div><div class="run-kv-lbl">Avg pace</div></div>
+      <div class="run-kv-item"><div class="run-kv-val">${avgHR?avgHR+" bpm":"—"}</div><div class="run-kv-lbl">Avg HR</div></div>
     </div>
-    ${r.location||sn?`<div style="font-size:0.78rem;color:var(--muted);margin-top:6px;display:flex;gap:10px">${r.location?`<span>📍 ${r.location}</span>`:""} ${sn?`<span>👟 ${sn}</span>`:""}</div>`:""}
+    ${r.location||sn?`<div class="run-sub-pills" style="margin-top:6px">${r.location?`<span class="run-sub-pill">📍 ${r.location}</span>`:""} ${sn?`<span class="run-sub-pill">👟 ${sn}</span>`:""}</div>`:""}
     ${splits.length?`<div style="margin-top:6px;border:1px solid var(--border);border-radius:6px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:0.75rem"><thead><tr style="background:var(--bg3)"><th style="padding:4px 8px;text-align:center;color:var(--muted)">Km</th><th style="padding:4px 8px;text-align:center;color:var(--muted)">Pace</th><th style="padding:4px 8px;text-align:center;color:var(--muted)">HR</th></tr></thead><tbody>${splits.map(s=>`<tr style="border-top:1px solid var(--border)"><td style="padding:4px 8px;text-align:center;font-weight:700;color:var(--text)">${s.km}</td><td style="padding:4px 8px;text-align:center;color:var(--muted)">${s.pace||"—"}</td><td style="padding:4px 8px;text-align:center;color:var(--muted)">${s.hr||"—"}</td></tr>`).join("")}</tbody></table></div>`:""}
     ${r.notes?`<div style="font-size:0.78rem;color:var(--muted);font-style:italic;margin-top:6px">${r.notes}</div>`:""}
   </div>`;
