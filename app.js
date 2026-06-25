@@ -428,7 +428,8 @@ function addExerciseToSession(name){
   const exData=allExercises.find(e=>e.name===name); if(!exData) return;
   const lastSets=getLastSessionSets(name);
   const sets=lastSets.length>0?lastSets.map(s=>({reps:s.reps,weight:s.weight,done:false})):[{reps:"",weight:"",done:false}];
-  session.exercises.push({exData,sets,machineUsed:(exData.equipment||[])[0]||null,collapsed:false});
+  const savedTimer=JSON.parse(localStorage.getItem('gt_rest_timer')||'120');
+  session.exercises.push({exData,sets,machineUsed:(exData.equipment||[])[0]||null,collapsed:false,restDuration:savedTimer,restRemaining:null,restInterval:null,restConfigMode:false});
   saveSessionToLocal();
   renderExerciseList();
   setTimeout(()=>{ const cards=document.querySelectorAll(".exercise-card,.exercise-card-collapsed"); if(cards.length) cards[cards.length-1].scrollIntoView({behavior:"smooth",block:"start"}); },50);
@@ -447,6 +448,38 @@ function getPRInfo(name){
 }
 
 /* RENDER EXERCISE LIST */
+function fmtTimer(secs){
+  if(!secs&&secs!==0) return "2:00";
+  const m=Math.floor(secs/60), s=secs%60;
+  return `\${m}:\${String(s).padStart(2,"0")}`;
+}
+function parseTimerInput(val){
+  const parts=val.split(":").map(Number);
+  if(parts.length===2) return (parts[0]||0)*60+(parts[1]||0);
+  if(parts.length===1) return parts[0]||0;
+  return 0;
+}
+function startRestTimer(idx){
+  const ex=session.exercises[idx];
+  if(!ex) return;
+  ex.restInterval=setInterval(()=>{
+    ex.restRemaining--;
+    // Update display without full re-render
+    const inp=document.getElementById("rest-input-"+idx);
+    if(inp){
+      inp.value=fmtTimer(ex.restRemaining);
+      const color=ex.restRemaining<=10?"#ef4444":ex.restRemaining<=30?"#f59e0b":"#22c55e";
+      inp.style.color=color;
+      inp.style.borderColor=color+"40";
+    }
+    if(ex.restRemaining<=0){
+      clearInterval(ex.restInterval); ex.restInterval=null; ex.restRemaining=null;
+      showToast("Rest done — next set! 💪");
+      renderExerciseList();
+    }
+  },1000);
+}
+
 function renderExerciseList(){
   const list=$("exercise-list");
   if(!session.exercises.length){ list.innerHTML=""; return; }
@@ -457,7 +490,7 @@ function renderExerciseList(){
 function bindExerciseCardEvents(){
   const list=$("exercise-list");
   list.querySelectorAll(".set-input").forEach(inp=>{ inp.addEventListener("change",e=>{ const {exIdx,setIdx,field}=e.target.dataset; session.exercises[exIdx].sets[setIdx][field]=e.target.value?parseFloat(e.target.value):""; saveSessionToLocal(); }); });
-  list.querySelectorAll(".set-check").forEach(btn=>{ btn.addEventListener("click",e=>{ const {exIdx,setIdx}=e.target.dataset; session.exercises[exIdx].sets[setIdx].done=!session.exercises[exIdx].sets[setIdx].done; saveSessionToLocal(); renderExerciseList(); }); });
+  list.querySelectorAll(".set-check").forEach(btn=>{ btn.addEventListener("click",e=>{ const {exIdx,setIdx}=e.target.dataset; const ex=session.exercises[exIdx]; ex.sets[setIdx].done=!ex.sets[setIdx].done; saveSessionToLocal(); if(ex.sets[setIdx].done&&ex.restDuration){ clearInterval(ex.restInterval); ex.restInterval=null; ex.restRemaining=ex.restDuration; renderExerciseList(); startRestTimer(parseInt(exIdx)); } else { renderExerciseList(); } }); });
   list.querySelectorAll(".add-set-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); const last=session.exercises[idx].sets.slice(-1)[0]; session.exercises[idx].sets.push({reps:last?.reps||"",weight:last?.weight||"",done:false}); saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".set-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const {exIdx,setIdx}=e.target.dataset; session.exercises[exIdx].sets.splice(parseInt(setIdx),1); saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".exercise-card-del,.collapsed-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ session.exercises.splice(parseInt(e.target.dataset.exIdx),1); saveSessionToLocal(); renderExerciseList(); }); });
@@ -465,6 +498,53 @@ function bindExerciseCardEvents(){
 
   list.querySelectorAll(".collapsed-expand-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].collapsed=false; saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".machine-radio").forEach(radio=>{ radio.addEventListener("change",e=>{ const {exIdx}=e.target.dataset; session.exercises[exIdx].machineUsed=e.target.value; saveSessionToLocal(); }); });
+
+  // Rest timer action buttons
+  list.querySelectorAll(".rest-side-action").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      const idx=parseInt(e.target.dataset.exIdx);
+      const action=e.target.dataset.action;
+      const ex=session.exercises[idx];
+      if(action==="skip"){
+        clearInterval(ex.restInterval); ex.restInterval=null; ex.restRemaining=null;
+        renderExerciseList();
+      } else if(action==="remove"){
+        ex.restDuration=null; localStorage.setItem("gt_rest_timer","null");
+        renderExerciseList();
+      } else if(action==="config"){
+        ex.restConfigMode=true; renderExerciseList();
+        setTimeout(()=>{ const inp=document.getElementById("rest-input-"+idx); if(inp){ inp.removeAttribute("readonly"); inp.focus(); inp.select(); } },50);
+      } else if(action==="save"){
+        const inp=document.getElementById("rest-input-"+idx);
+        if(inp){
+          const val=inp.value.trim();
+          const secs=parseTimerInput(val);
+          if(secs>0){
+            ex.restDuration=secs;
+            localStorage.setItem("gt_rest_timer",String(secs));
+          }
+        }
+        ex.restConfigMode=false; renderExerciseList();
+      }
+    });
+  });
+
+  // Auto-format rest timer input
+  list.querySelectorAll(".rest-timer-input").forEach(inp=>{
+    inp.addEventListener("input",e=>{
+      let v=e.target.value.replace(/\D/g,"");
+      if(v.length>4) v=v.slice(0,4);
+      if(v.length>=3) v=v.slice(0,2)+":"+v.slice(2);
+      e.target.value=v;
+    });
+  });
+
+  // Restart timers for active exercises after re-render
+  session.exercises.forEach((ex,idx)=>{
+    if(ex.restRemaining!==null&&ex.restRemaining>0&&!ex.restInterval){
+      startRestTimer(idx);
+    }
+  });
 }
 
 function buildExerciseCard(item,idx){
