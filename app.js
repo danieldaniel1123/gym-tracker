@@ -678,48 +678,128 @@ function bindHistory(){ $("filter-type").addEventListener("change",renderHistory
 function renderHistory(){
   const tf=$("filter-type").value, df=$("filter-day").value;
 
-  // Group workouts by sessionId
+  // Group workouts by sessionId into sessions
   const sessionMap={};
   workouts.forEach(w=>{
     if(tf==="run") return;
     if(df!=="all"&&w.day!==df) return;
     const key=w.sessionId?String(w.sessionId):`${w.date}_${w.day}`;
-    if(!sessionMap[key]) sessionMap[key]={key,type:"workout",date:w.date,_date:w.date,day:w.day,duration:w.duration||null,exercises:[],_sort:w.date+"_"+(w.sessionId||w.date)};
+    if(!sessionMap[key]) sessionMap[key]={key,type:"workout",date:w.date,day:w.day,duration:w.duration||null,exercises:[],_id:w.sessionId||0};
     sessionMap[key].exercises.push(w);
   });
 
-  // Build flat list — workouts and runs interleaved, sorted by date desc
-  let items=Object.values(sessionMap);
-  if(tf!=="workout") runs.forEach(r=>{ const rn={...r,shoeId:r.shoe_id||r.shoeId,shoeName:r.shoe_name||r.shoeName}; items.push({...rn,_date:r.date,_sort:r.date+"_"+r.id,type:"run"}); });
-  // Ensure all items have _date
-  items.forEach(item=>{ if(!item._date) item._date=item.date; });
-  items.sort((a,b)=>b._sort.localeCompare(a._sort));
-
-  // Group by actual date (not sort key)
+  // Build per-date map — each date has an array of activities (workout sessions + runs)
   const byDate={};
-  items.forEach(item=>{ const d=item._date||item.date; if(!byDate[d]) byDate[d]=[]; byDate[d].push(item); });
+
+  Object.values(sessionMap).forEach(s=>{
+    if(!byDate[s.date]) byDate[s.date]=[];
+    byDate[s.date].push({...s,_id:s._id||0});
+  });
+
+  if(tf!=="workout"){
+    runs.forEach(r=>{
+      if(!byDate[r.date]) byDate[r.date]=[];
+      const rn={...r,shoeId:r.shoe_id||r.shoeId,shoeName:r.shoe_name||r.shoeName,type:"run",_id:r.id};
+      byDate[r.date].push(rn);
+    });
+  }
+
+  // Sort activities within each day by session/run ID ascending (order logged)
+  Object.values(byDate).forEach(arr=>arr.sort((a,b)=>Number(a._id)-Number(b._id)));
 
   const list=$("history-list");
-  if(!items.length){ list.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>No entries yet. Start logging!</p></div>`; return; }
+  const sortedDates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
 
-  // Count sessions per date+day to handle Session 1, Session 2
-  list.innerHTML=Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,dateItems])=>{
-    // Track workout day counts for same-day numbering
-    const dayCounts={};
-    const cardHTML=dateItems.map(item=>{
-      if(item.type==="run") return renderRunSessionCard(item);
-      const dayKey=`${item.date}_${item.day}`;
-      dayCounts[dayKey]=(dayCounts[dayKey]||0)+1;
-      // Count total sessions for this day to determine if we need numbering
-      const totalForDay=dateItems.filter(i=>i.type==="workout"&&i.day===item.day).length;
-      const sessionNum=totalForDay>1?dayCounts[dayKey]:null;
-      return renderWorkoutSessionCard(item,sessionNum);
+  if(!sortedDates.length){ list.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>No entries yet. Start logging!</p></div>`; return; }
+
+  list.innerHTML=sortedDates.map(date=>{
+    const dateItems=byDate[date];
+    // Use date as the expand key so one click expands the whole day
+    const dayKey="day_"+date;
+    const isOpen=expandedSessions.has(dayKey);
+
+    // Collapsed preview: show pills for all activities
+    const previewPills=dateItems.map(item=>{
+      if(item.type==="run") return `<span class="preview-pill">🏃 Run${item.distance?" · "+item.distance+"km":""}</span>`;
+      return `<span class="preview-pill">${item.day}</span>`;
     }).join("");
-    return `<div class="date-group"><div class="date-group-header">${formatDate(date)}</div><div style="display:flex;flex-direction:column;gap:8px">${cardHTML}</div></div>`;
+
+    // Expanded: show each activity in order
+    const bodyItems=dateItems.map(item=>{
+      if(item.type==="run") return renderRunDayItem(item);
+      return renderWorkoutDayItem(item);
+    }).join("");
+
+    // Summary badges
+    const workoutCount=dateItems.filter(i=>i.type==="workout").length;
+    const runCount=dateItems.filter(i=>i.type==="run").length;
+    const badges=[];
+    if(workoutCount) badges.push(`<span class="badge accent">${workoutCount} workout${workoutCount!==1?"s":""}</span>`);
+    if(runCount) badges.push(`<span class="badge blue">${runCount} run${runCount!==1?"s":""}</span>`);
+
+    return `<div class="date-group">
+      <div class="session-card" style="border-left:none">
+        <div class="session-card-header" data-key="${dayKey}">
+          <div class="session-card-left">
+            <div class="session-card-title">${formatDate(date)}</div>
+            <div class="session-card-meta">${badges.join("")}</div>
+          </div>
+          <div class="session-card-right"><span class="session-chevron ${isOpen?"open":""}">▾</span></div>
+        </div>
+        ${isOpen
+          ? `<div class="session-card-body">${bodyItems}</div>`
+          : `<div class="session-card-preview">${previewPills}</div>`
+        }
+      </div>
+    </div>`;
   }).join("");
 
   list.querySelectorAll(".session-card-header").forEach(h=>{ h.addEventListener("click",()=>{ const k=h.dataset.key; if(expandedSessions.has(k)) expandedSessions.delete(k); else expandedSessions.add(k); renderHistory(); }); });
   list.querySelectorAll(".history-delete").forEach(btn=>{ btn.addEventListener("click",e=>{ e.stopPropagation(); deleteEntry(btn.dataset.id,btn.dataset.type,btn.dataset.sessionId); }); });
+}
+
+function renderWorkoutDayItem(s){
+  const dur=s.duration?fmtDuration(s.duration):null;
+  const setsHTML=s.exercises.map(ex=>{
+    const sets=ex.sets_detail||[];
+    return `<div class="day-item-exercise">
+      <div class="day-item-ex-header">
+        <span class="day-item-ex-name">${ex.exercise}</span>
+        <span class="day-item-ex-meta">${sets.length} set${sets.length!==1?"s":""}</span>
+      </div>
+      <div class="day-item-ex-sets">${sets.map(s=>`<span class="day-set-pill">${s.reps||"—"}r · ${s.weight||"—"}kg</span>`).join("")}</div>
+    </div>`;
+  }).join("");
+  return `<div class="day-item workout-item">
+    <div class="day-item-header">
+      <div class="day-item-title">${s.day}${dur?` <span class="day-item-duration">${dur}</span>`:""}</div>
+      <button class="history-delete" style="opacity:1;position:static;font-size:0.72rem;color:var(--muted)" data-id="${s.exercises[0]?.id}" data-type="workout-session" data-session-id="${s.key}">Delete</button>
+    </div>
+    ${setsHTML}
+  </div>`;
+}
+
+function renderRunDayItem(r){
+  const pace=r.distance&&r.time?calcPace(r.time,r.distance):null;
+  const splits=r.km_splits||r.kmSplits||[];
+  const hrs=splits.map(s=>s.hr).filter(Boolean);
+  const avgHR=hrs.length?Math.round(hrs.reduce((a,b)=>a+b,0)/hrs.length):null;
+  const sn=r.shoeName||r.shoe_name;
+  return `<div class="day-item run-item">
+    <div class="day-item-header">
+      <div class="day-item-title">🏃 Run</div>
+      <button class="history-delete" style="opacity:1;position:static;font-size:0.72rem;color:var(--muted)" data-id="${r.id}" data-type="run">Delete</button>
+    </div>
+    <div class="run-stats-grid" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:6px">
+      <div class="run-stat-cell" style="border-right:1px solid var(--border);border-bottom:1px solid var(--border)"><div class="run-stat-val">${r.distance?r.distance+" km":"—"}</div><div class="run-stat-lbl">Distance</div></div>
+      <div class="run-stat-cell" style="border-bottom:1px solid var(--border)"><div class="run-stat-val">${r.time||"—"}</div><div class="run-stat-lbl">Time</div></div>
+      <div class="run-stat-cell" style="border-right:1px solid var(--border)"><div class="run-stat-val">${pace||"—"}</div><div class="run-stat-lbl">Avg pace /km</div></div>
+      <div class="run-stat-cell"><div class="run-stat-val">${avgHR?avgHR+" bpm":"—"}</div><div class="run-stat-lbl">Avg HR</div></div>
+    </div>
+    ${r.location||sn?`<div style="font-size:0.78rem;color:var(--muted);margin-top:6px;display:flex;gap:10px">${r.location?`<span>📍 ${r.location}</span>`:""} ${sn?`<span>👟 ${sn}</span>`:""}</div>`:""}
+    ${splits.length?`<div style="margin-top:6px;border:1px solid var(--border);border-radius:6px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:0.75rem"><thead><tr style="background:var(--bg3)"><th style="padding:4px 8px;text-align:center;color:var(--muted)">Km</th><th style="padding:4px 8px;text-align:center;color:var(--muted)">Pace</th><th style="padding:4px 8px;text-align:center;color:var(--muted)">HR</th></tr></thead><tbody>${splits.map(s=>`<tr style="border-top:1px solid var(--border)"><td style="padding:4px 8px;text-align:center;font-weight:700;color:var(--text)">${s.km}</td><td style="padding:4px 8px;text-align:center;color:var(--muted)">${s.pace||"—"}</td><td style="padding:4px 8px;text-align:center;color:var(--muted)">${s.hr||"—"}</td></tr>`).join("")}</tbody></table></div>`:""}
+    ${r.notes?`<div style="font-size:0.78rem;color:var(--muted);font-style:italic;margin-top:6px">${r.notes}</div>`:""}
+  </div>`;
 }
 
 function renderWorkoutSessionCard(s,sessionNum){
