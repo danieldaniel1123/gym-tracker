@@ -313,7 +313,11 @@ function bindExerciseCardEvents(){
       const idx=parseInt(e.target.dataset.exIdx);
       const action=e.target.dataset.action;
       const ex=session.exercises[idx];
-      if(action==="skip"){
+      if(action==="restore"){
+        ex.restDuration=120; ex.restRemaining=null; ex.restConfigMode=false;
+        localStorage.setItem("gt_rest_timer","120");
+        renderExerciseList();
+      } else if(action==="skip"){
         if(restTimers[idx]){ clearInterval(restTimers[idx]); delete restTimers[idx]; }
         ex.restRemaining=null;
         renderExerciseList();
@@ -374,7 +378,7 @@ function buildExerciseCard(item,idx){
   const rightLabel=isActive?"Config":isConfig?"Save":"Configure";
   const leftAction=isActive?"skip":"remove";
   const rightAction=isActive?"config":isConfig?"save":"config";
-  const restTimerHTML=item.restDuration===null?"":
+  const restTimerHTML=item.restDuration===null?`<div class="rest-timer-row"><button class="rest-side-action muted" data-action="restore" data-ex-idx="${idx}">+ Add rest timer</button></div>`:
     `<div class="rest-timer-row">
       <button class="rest-side-action muted" data-action="${leftAction}" data-ex-idx="${idx}">${leftLabel}</button>
       <input class="rest-timer-input" id="rest-input-${idx}"
