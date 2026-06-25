@@ -1,5 +1,6 @@
 let workouts=[],runs=[],shoes=[],customExercises=[],allExercises=[];
 let session={active:false,day:"",date:"",startTime:null,timerInterval:null,exercises:[]};
+const restTimers={};  // global map of idx -> intervalId
 let expandedSessions=new Set();
 let editingShoeId=null,editingExId=null;
 let exEditDays=[],exEditMuscles=[],exEditEquip=[];
@@ -265,20 +266,24 @@ function parseTimerInput(val){
 function startRestTimer(idx){
   const ex=session.exercises[idx];
   if(!ex) return;
-  ex.restInterval=setInterval(()=>{
-    ex.restRemaining--;
-    // Update display without full re-render
-    const inp=document.getElementById("rest-input-"+idx);
-    if(inp){
-      inp.value=fmtTimer(ex.restRemaining);
-      const color=ex.restRemaining<=10?"#ef4444":ex.restRemaining<=30?"#f59e0b":"#22c55e";
-      inp.style.color=color;
-      inp.style.borderColor=color+"40";
-    }
-    if(ex.restRemaining<=0){
-      clearInterval(ex.restInterval); ex.restInterval=null; ex.restRemaining=null;
+  // Always clear any existing interval for this exercise first
+  if(restTimers[idx]){ clearInterval(restTimers[idx]); delete restTimers[idx]; }
+  restTimers[idx]=setInterval(()=>{
+    if(!session.exercises[idx]||session.exercises[idx].restRemaining<=0){
+      clearInterval(restTimers[idx]); delete restTimers[idx];
+      if(session.exercises[idx]) session.exercises[idx].restRemaining=null;
       showToast("Rest done — next set! 💪");
       renderExerciseList();
+      return;
+    }
+    session.exercises[idx].restRemaining--;
+    const inp=document.getElementById("rest-input-"+idx);
+    if(inp){
+      inp.value=fmtTimer(session.exercises[idx].restRemaining);
+      const rem=session.exercises[idx].restRemaining;
+      const color=rem<=10?"#ef4444":rem<=30?"#f59e0b":"#22c55e";
+      inp.style.color=color;
+      inp.style.borderColor=color+"40";
     }
   },1000);
 }
@@ -309,7 +314,8 @@ function bindExerciseCardEvents(){
       const action=e.target.dataset.action;
       const ex=session.exercises[idx];
       if(action==="skip"){
-        clearInterval(ex.restInterval); ex.restInterval=null; ex.restRemaining=null;
+        if(restTimers[idx]){ clearInterval(restTimers[idx]); delete restTimers[idx]; }
+        ex.restRemaining=null;
         renderExerciseList();
       } else if(action==="remove"){
         ex.restDuration=null; localStorage.setItem("gt_rest_timer","null");
@@ -343,11 +349,7 @@ function bindExerciseCardEvents(){
   });
 
   // Restart timers for active exercises after re-render
-  session.exercises.forEach((ex,idx)=>{
-    if(ex.restRemaining!==null&&ex.restRemaining>0&&!ex.restInterval){
-      startRestTimer(idx);
-    }
-  });
+  // Timers continue running independently — no restart needed
 }
 
 function buildExerciseCard(item,idx){
