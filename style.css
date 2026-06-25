@@ -394,3 +394,41 @@ textarea { resize:vertical; min-height:72px; line-height:1.5; }
 .run-stat-cell:nth-child(3) { border-right: 1px solid var(--border); }
 .run-stat-val { font-size: 1rem; font-weight: 700; color: var(--text); }
 .run-stat-lbl { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ── DAY ITEMS (inside expanded day card) ── */
+.day-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.day-item:last-child { border-bottom: none; }
+.day-item.workout-item { border-left: 3px solid var(--accent); }
+.day-item.run-item { border-left: 3px solid var(--run); }
+
+.day-item-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.day-item-title {
+  font-size: 0.9rem; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+.day-item-duration {
+  font-size: 0.75rem; font-weight: 500; color: var(--muted);
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 1px 8px;
+}
+
+.day-item-exercise { margin-bottom: 8px; }
+.day-item-exercise:last-child { margin-bottom: 0; }
+.day-item-ex-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+}
+.day-item-ex-name { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.day-item-ex-meta { font-size: 0.72rem; color: var(--muted); }
+.day-item-ex-sets { display: flex; flex-wrap: wrap; gap: 4px; }
+.day-set-pill {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2px 8px;
+  font-size: 0.72rem; color: var(--muted);
+}
