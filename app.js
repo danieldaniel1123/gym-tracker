@@ -558,7 +558,32 @@ function buildExerciseCard(item,idx){
   else if(equipList.length>1) machineHTML=`<div class="machine-section"><div class="machine-label">Equipment used</div><div class="machine-radios">${equipList.map(eq=>`<label class="machine-radio-item"><input type="radio" class="machine-radio" name="machine_${idx}" value="${eq}" data-ex-idx="${idx}" ${(machineUsed||equipList[0])===eq?"checked":""}>${eq}</label>`).join("")}</div></div>`;
   const prHTML=pr?`<div class="pr-strip"><div class="pr-item"><span class="pr-label">Last session</span><span class="pr-value">${pr.lastWeight?pr.lastWeight+"kg × "+pr.lastReps:"—"}</span></div><div class="pr-divider"></div><div class="pr-item"><span class="pr-label">All-time PR</span><span class="pr-value">${pr.prWeight?pr.prWeight+"kg × "+pr.prReps:"—"}</span></div></div>`:"";
   const setsHTML=sets.map((set,sIdx)=>`<div class="set-row ${set.done?"completed":""}"><span class="set-num">${sIdx+1}</span><input class="set-input" type="number" min="0" max="999" step="1" value="${set.reps||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="reps"/><input class="set-input" type="number" min="0" max="9999" step="0.5" value="${set.weight||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="weight"/><button class="set-check ${set.done?"done":""}" data-ex-idx="${idx}" data-set-idx="${sIdx}">✓</button><button class="set-del-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}" title="Remove set">✕</button></div>`).join("");
-  return `<div class="exercise-card"><div class="exercise-card-header"><span class="exercise-card-name">${exData.name}</span><div class="exercise-card-actions"><button class="exercise-card-del" data-ex-idx="${idx}">✕</button></div></div><div class="muscle-section"><div class="muscle-diagrams">${diagramHTML}</div><div class="muscle-legend"><div class="muscle-legend-title">Muscles</div>${legendHTML}<div class="equip-section">${(exData.equipment||[]).map(e=>`<div class="equip-row"><span class="equip-dot"></span>${e}</div>`).join("")}</div></div></div>${machineHTML}${prHTML}<div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span><span></span></div>${setsHTML}<div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button></div><div class="save-ex-row"><button class="exercise-save-btn" data-ex-idx="${idx}">✓ Save exercise</button></div></div>`;
+
+  // Rest timer
+  const isConfig=item.restConfigMode||false;
+  const isActive=item.restRemaining!==null&&item.restRemaining>0;
+  const restSecs=isActive?item.restRemaining:(item.restDuration||120);
+  const restVal=fmtTimer(restSecs);
+  const restColor=isActive?(item.restRemaining<=10?"#ef4444":item.restRemaining<=30?"#f59e0b":"#22c55e"):"";
+  const leftLabel=isActive?"Skip":isConfig?"Remove":"Remove";
+  const rightLabel=isActive?"Config":isConfig?"Save":"Configure";
+  const leftAction=isActive?"skip":"remove";
+  const rightAction=isActive?"config":isConfig?"save":"config";
+  const restTimerHTML=item.restDuration===null?"":
+    `<div class="rest-timer-row">
+      <button class="rest-side-action muted" data-action="${leftAction}" data-ex-idx="${idx}">${leftLabel}</button>
+      <input class="rest-timer-input" id="rest-input-${idx}"
+        value="${restVal}"
+        ${isActive||!isConfig?"readonly":""}
+        style="${restColor?`color:${restColor};border-color:${restColor}40`:""}"
+        data-ex-idx="${idx}"
+        inputmode="numeric"
+        maxlength="5"
+      />
+      <button class="rest-side-action muted" data-action="${rightAction}" data-ex-idx="${idx}">${rightLabel}</button>
+    </div>`;
+
+  return `<div class="exercise-card"><div class="exercise-card-header"><span class="exercise-card-name">${exData.name}</span><div class="exercise-card-actions"><button class="exercise-card-del" data-ex-idx="${idx}">✕</button></div></div><div class="muscle-section"><div class="muscle-diagrams">${diagramHTML}</div><div class="muscle-legend"><div class="muscle-legend-title">Muscles</div>${legendHTML}<div class="equip-section">${(exData.equipment||[]).map(e=>`<div class="equip-row"><span class="equip-dot"></span>${e}</div>`).join("")}</div></div></div>${machineHTML}${prHTML}<div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span><span></span></div>${setsHTML}<div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button></div>${restTimerHTML}<div class="save-ex-row"><button class="exercise-save-btn" data-ex-idx="${idx}">✓ Save exercise</button></div></div>`;
 }
 
 function buildCollapsedCard(item,idx){
