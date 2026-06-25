@@ -432,3 +432,15 @@ textarea { resize:vertical; min-height:72px; line-height:1.5; }
   border-radius: 20px; padding: 2px 8px;
   font-size: 0.72rem; color: var(--muted);
 }
+
+/* ── RUN KV LAYOUT ── */
+.run-kv { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+.run-kv-item { display: flex; flex-direction: column; gap: 1px; }
+.run-kv-val { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+.run-kv-lbl { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.run-sub-pill {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2px 8px;
+  font-size: 0.72rem; color: var(--muted);
+}
+.run-sub-pills { display: flex; flex-wrap: wrap; gap: 4px; }
