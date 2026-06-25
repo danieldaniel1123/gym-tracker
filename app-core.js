@@ -254,7 +254,7 @@ function getPRInfo(name){
 function fmtTimer(secs){
   if(!secs&&secs!==0) return "2:00";
   const m=Math.floor(secs/60), s=secs%60;
-  return `\${m}:\${String(s).padStart(2,"0")}`;
+  return m+":"+String(s).padStart(2,"0");
 }
 function parseTimerInput(val){
   const parts=val.split(":").map(Number);
