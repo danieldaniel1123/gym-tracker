@@ -112,7 +112,7 @@ function renderRunDayItem(r){
   const sn=r.shoeName||r.shoe_name;
   return `<div class="day-item run-item">
     <div class="day-item-header">
-      <div class="day-item-title">Run</div>
+      <div class="day-item-title">${r.title||"Run"}</div>
       <button class="history-delete" style="opacity:1;position:static;font-size:0.72rem;color:var(--muted)" data-id="${r.id}" data-type="run">Delete</button>
     </div>
     <div class="run-kv">
@@ -212,3 +212,121 @@ function formatDate(ds){ if(!ds)return""; return new Date(ds+"T00:00:00").toLoca
 function fmtDuration(sec){ const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60; return h>0?`${h}h ${m}m`:`${m}m ${s}s`; }
 function calcPace(timeStr,km){ const p=timeStr.split(":").map(Number); if(p.length<2||!km)return""; const t=(p[0]||0)*3600+(p[1]||0)*60+(p[2]||0); const spk=t/km; return `${Math.floor(spk/60)}:${String(Math.round(spk%60)).padStart(2,"0")}`; }
 function showToast(msg,type="success"){ const t=$("toast"); t.textContent=msg; t.style.background=type==="error"?"#ef4444":""; t.classList.remove("hidden"); setTimeout(()=>{ t.classList.add("hidden"); t.style.background=""; },3000); }
+
+/* ══════════════════════════════════════════
+   CSV EXPORT
+   ══════════════════════════════════════════ */
+function initExport(){
+  $("export-btn").addEventListener("click",showExportPanel);
+  $("export-cancel-btn").addEventListener("click",()=>$("export-panel").classList.add("hidden"));
+  $("export-download-btn").addEventListener("click",downloadCSV);
+}
+
+function showExportPanel(){
+  // Set default date range to last 30 days
+  const today=new Date().toISOString().split("T")[0];
+  const ago=new Date(Date.now()-30*24*60*60*1000).toISOString().split("T")[0];
+  $("export-from").value=ago;
+  $("export-to").value=today;
+  $("export-panel").classList.remove("hidden");
+}
+
+function downloadCSV(){
+  const from=$("export-from").value;
+  const to=$("export-to").value;
+  const type=$("export-type").value;
+  if(!from||!to){ showToast("Please select a date range"); return; }
+
+  const rows=[];
+
+  if(type==="all"||type==="workout"){
+    // Group by session
+    const sessionMap={};
+    workouts.forEach(w=>{
+      if(w.date<from||w.date>to) return;
+      const key=w.sessionId?String(w.sessionId):`${w.date}_${w.day}`;
+      if(!sessionMap[key]) sessionMap[key]={date:w.date,day:w.day,exercises:[]};
+      sessionMap[key].exercises.push(w);
+    });
+    Object.values(sessionMap).forEach(s=>{
+      s.exercises.forEach(ex=>{
+        const sets=ex.sets_detail||[];
+        sets.forEach((set,i)=>{
+          rows.push([
+            "Workout",
+            s.date,
+            s.day,
+            ex.exercise,
+            (ex.muscles||[]).join("|"),
+            ex.machine_used||"",
+            i+1,
+            set.reps||"",
+            set.weight||"",
+            ex.duration||""
+          ]);
+        });
+        if(!sets.length){
+          rows.push(["Workout",s.date,s.day,ex.exercise,(ex.muscles||[]).join("|"),ex.machine_used||"","","","",ex.duration||""]);
+        }
+      });
+    });
+  }
+
+  if(type==="all"||type==="run"){
+    runs.forEach(r=>{
+      if(r.date<from||r.date>to) return;
+      const splits=(r.km_splits||r.kmSplits||[]);
+      const hrs=splits.map(s=>s.hr).filter(Boolean);
+      const avgHR=hrs.length?Math.round(hrs.reduce((a,b)=>a+b,0)/hrs.length):"";
+      const pace=r.distance&&r.time?calcPace(r.time,r.distance):"";
+      rows.push([
+        "Run",
+        r.date,
+        r.title||"",
+        r.distance||"",
+        r.time||"",
+        pace,
+        avgHR,
+        r.location||"",
+        r.shoe_name||r.shoeName||"",
+        r.notes||""
+      ]);
+    });
+  }
+
+  if(!rows.length){ showToast("No data found for selected range"); return; }
+
+  // Build CSV
+  const workoutHeader=["Type","Date","Day","Exercise","Muscles","Equipment","Set","Reps","Weight (kg)","Duration (s)"];
+  const runHeader=["Type","Date","Title","Distance (km)","Time","Avg Pace","Avg HR","Location","Shoe","Notes"];
+
+  let csv="";
+  if(type==="workout"){
+    csv=workoutHeader.join(",")+"
+";
+  } else if(type==="run"){
+    csv=runHeader.join(",")+"
+";
+  } else {
+    // Mixed — use a unified header that covers both
+    csv=["Type","Date","Day/Title","Exercise/Distance","Muscles/Time","Equipment/Avg Pace","Set/Avg HR","Reps/Location","Weight/Shoe","Duration/Notes"].join(",")+"
+";
+  }
+
+  rows.forEach(row=>{
+    csv+=row.map(v=>{
+      const s=String(v||"");
+      return s.includes(",")||s.includes('"')||s.includes("
+") ? `"${s.replace(/"/g,'""')}"` : s;
+    }).join(",")+"
+";
+  });
+
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=`gymtracker-${type}-${from}-to-${to}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast("CSV downloaded!");
+  $("export-panel").classList.add("hidden");
+}
