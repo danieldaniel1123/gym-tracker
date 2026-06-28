@@ -625,45 +625,45 @@ function initMuscleDiagram(muscles, containerId) {
   const theme = document.documentElement.getAttribute("data-theme") || "dark";
   const bodyColor = theme === "dark" ? "#3a3a3a" : "#d1d5db";
 
-  // Build unique slug list with colors for front and back
-  const frontSlugs = [], backSlugs = [];
-  const FRONT_SLUGS = new Set(["chest","front-deltoids","biceps","forearm","abs","obliques","adductor","abductors","quadriceps","knees"]);
-  const BACK_SLUGS  = new Set(["back-deltoids","triceps","upper-back","trapezius","lower-back","gluteal","hamstring","calves","left-soleus","right-soleus"]);
+  // anterior = front view, posterior = back view
+  const ANTERIOR_SLUGS = new Set(["chest","front-deltoids","biceps","forearm","abs","obliques","abductors","quadriceps","knees"]);
+  const POSTERIOR_SLUGS = new Set(["back-deltoids","triceps","upper-back","trapezius","lower-back","gluteal","hamstring","calves","left-soleus","right-soleus","adductor"]);
+  // side delts appear on both views
+  const BOTH_SLUGS = new Set(["front-deltoids"]);
 
-  const seen = {};
-  muscles.forEach((m, i) => {
+  const anteriorSlugs = [], posteriorSlugs = [];
+  const seen = new Set();
+
+  muscles.forEach(m => {
     const slug = MUSCLE_TO_SLUG[m];
     const color = MUSCLE_COLORS[m] || "#888";
     if(!slug) return;
-    const key = slug;
-    if(!seen[key]) {
-      seen[key] = { slug, color, idx: Object.keys(seen).length };
-      if(FRONT_SLUGS.has(slug)) frontSlugs.push({ slug, color });
-      if(BACK_SLUGS.has(slug))  backSlugs.push({ slug, color });
-      // side delts appear on both
-      if(m === "Side delts") {
-        if(!frontSlugs.find(s=>s.slug===slug)) frontSlugs.push({ slug, color });
-        if(!backSlugs.find(s=>s.slug===slug))  backSlugs.push({ slug, color });
-      }
+    const key = slug + color;
+    if(seen.has(key)) return;
+    seen.add(key);
+    if(ANTERIOR_SLUGS.has(slug)) anteriorSlugs.push({ slug, color });
+    if(POSTERIOR_SLUGS.has(slug)) posteriorSlugs.push({ slug, color });
+    // Side delts show on both
+    if(m === "Side delts") {
+      if(!posteriorSlugs.find(s=>s.slug===slug)) posteriorSlugs.push({ slug, color });
     }
   });
 
   const style = { width: "52px", background: "transparent", padding: "0" };
 
-  ["front","back"].forEach(side => {
-    const id = containerId + "-" + side;
+  [["front", anteriorSlugs, "anterior"], ["back", posteriorSlugs, "posterior"]].forEach(([viewName, slugs, type]) => {
+    const id = containerId + "-" + viewName;
     const el = document.getElementById(id);
     if(!el) return;
     el.innerHTML = "";
-    const slugs = side === "front" ? frontSlugs : backSlugs;
     const data = slugs.map((s, i) => ({ name: s.slug, muscles: [s.slug], frequency: i + 1 }));
     const hColors = slugs.map(s => s.color);
     try {
-      create({ container: el, data, highlightedColors: hColors.length ? hColors : ["#888"], bodyColor, side, gender: "male", style });
-      // Fix body color for dark mode
+      create({ container: el, data, highlightedColors: hColors.length ? hColors : ["#888888"], bodyColor, type, gender: "male", style });
+      // Fix default body color polygons
       el.querySelectorAll("polygon, path").forEach(p => {
         const fill = p.style.fill;
-        if(fill && (fill.includes("182, 189") || fill.includes("b6bdc3"))) {
+        if(fill && (fill.includes("182, 189") || fill.includes("b6bdc3") || fill.includes("182,189"))) {
           p.style.fill = bodyColor;
         }
       });
