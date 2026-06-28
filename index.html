@@ -6,6 +6,7 @@
   <title>Gym Tracker</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/body-highlighter@latest/dist/body-highlighter.cjs.js"></script>
 </head>
 <body>
 
@@ -59,7 +60,7 @@
             </div>
             <div class="field">
               <label>Exercise day</label>
-              <select id="w-day"><option value="">Select day</option></select>
+              <select id="w-day" autocomplete="off"><option value="">Select day</option></select>
             </div>
           </div>
           <button id="start-session-btn" class="btn-primary" disabled>Start session</button>
@@ -73,11 +74,11 @@
             <button class="exercises-mgr-btn" id="close-exercise-mgr">✕ Close</button>
           </div>
           <div style="margin-top:1rem;margin-bottom:0.75rem;display:flex;gap:8px;align-items:center">
-            <input type="text" id="ex-mgr-search" placeholder="Search exercises…" style="flex:1" />
+            <input type="text" id="ex-mgr-search" autocomplete="off" autocorrect="off" placeholder="Search exercises…" style="flex:1" />
             <button class="btn-primary" id="add-new-exercise-btn" style="width:auto;padding:9px 14px;white-space:nowrap">+ New</button>
           </div>
           <div id="ex-edit-form" class="ex-edit-form hidden">
-            <div class="field"><label>Exercise name</label><input type="text" id="ex-name-input" placeholder="e.g. Incline dumbbell press" /></div>
+            <div class="field"><label>Exercise name</label><input type="text" id="ex-name-input" autocomplete="off" autocorrect="off" placeholder="e.g. Incline dumbbell press" /></div>
             <div class="field" style="margin-top:0.75rem">
               <label>Exercise days</label>
               <div id="ex-days-tags" class="tag-editor"></div>
@@ -113,7 +114,7 @@
         <div id="exercise-list" class="exercise-list"></div>
         <button id="add-exercise-btn" class="add-exercise-btn">+ Add exercise</button>
         <div id="exercise-picker" class="exercise-picker hidden">
-          <input type="text" id="exercise-search" placeholder="Search exercises…" />
+          <input type="text" id="exercise-search" autocomplete="off" autocorrect="off" placeholder="Search exercises…" />
           <div id="exercise-picker-list" class="exercise-picker-list"></div>
         </div>
         <div class="session-actions">
@@ -126,8 +127,12 @@
 
     <!-- ── RUN ── -->
     <section id="tab-run" class="tab">
-      <form id="run-form" class="card form-card">
+      <form id="run-form" class="card form-card" autocomplete="off">
         <h2 class="form-title">Log run</h2>
+        <div class="field">
+          <label>Title</label>
+          <input type="text" id="r-title" placeholder="e.g. Morning run, Race day…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        </div>
         <div class="form-row">
           <div class="field">
             <label>Date</label>
@@ -138,17 +143,17 @@
           </div>
           <div class="field">
             <label>Location</label>
-            <input type="text" id="r-location" placeholder="e.g. Rizal Park" />
+            <input type="text" id="r-location" autocomplete="off" autocorrect="off" placeholder="e.g. Rizal Park" />
           </div>
         </div>
         <div class="form-row">
           <div class="field">
             <label>Distance (km)</label>
-            <input type="number" id="r-distance" min="0" step="0.01" placeholder="5.0" />
+            <input type="number" id="r-distance" autocomplete="off" min="0" step="0.01" placeholder="5.0" />
           </div>
           <div class="field">
             <label>Time (hh:mm:ss)</label>
-            <input type="text" id="r-time" placeholder="00:00:00" maxlength="8" inputmode="numeric" />
+            <input type="text" id="r-time" autocomplete="off" autocorrect="off" placeholder="00:00:00" maxlength="8" inputmode="numeric" />
           </div>
         </div>
         <div class="field">
@@ -171,9 +176,12 @@
         </div>
         <div class="field">
           <label>Notes</label>
-          <textarea id="r-notes" rows="2" placeholder="Route, how you felt…"></textarea>
+          <textarea id="r-notes" autocomplete="off" autocorrect="off" rows="2" placeholder="Route, how you felt…"></textarea>
         </div>
-        <button type="submit" class="btn-primary">Save run</button>
+        <div style="display:flex;gap:10px">
+          <button type="button" id="discard-run-btn" class="btn-discard" style="flex:1">Discard</button>
+          <button type="submit" class="btn-primary" style="flex:2">Save run</button>
+        </div>
       </form>
 
       <div class="card" style="margin-top:1rem">
@@ -195,8 +203,36 @@
             <option value="run">Runs</option>
           </select>
           <select id="filter-day"><option value="all">All days</option></select>
+          <button id="export-btn" class="btn-export">⬇ Export</button>
         </div>
       </div>
+
+      <!-- Export panel -->
+      <div id="export-panel" class="export-panel hidden">
+        <div class="export-row">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label>From</label>
+            <input type="date" id="export-from" />
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label>To</label>
+            <input type="date" id="export-to" />
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label>Activity</label>
+            <select id="export-type">
+              <option value="all">All</option>
+              <option value="workout">Workouts</option>
+              <option value="run">Runs</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="export-cancel-btn" class="btn-discard" style="flex:1">Cancel</button>
+          <button id="export-download-btn" class="btn-finish" style="flex:2">Download CSV</button>
+        </div>
+      </div>
+
       <div id="history-list" class="history-list"></div>
     </section>
 
@@ -204,7 +240,7 @@
     <section id="tab-records" class="tab">
       <div class="tab-header">
         <h2>Personal records</h2>
-        <input type="text" id="pr-search" placeholder="Search exercise…" class="search-input" />
+        <input type="text" id="pr-search" autocomplete="off" autocorrect="off" placeholder="Search exercise…" class="search-input" />
       </div>
       <div id="records-list" class="records-list"></div>
     </section>
@@ -219,14 +255,14 @@
         <div class="card form-card">
           <h2 class="form-title" id="shoe-form-title">Add shoe</h2>
           <div class="form-row">
-            <div class="field"><label>Brand</label><input type="text" id="shoe-brand" placeholder="e.g. Nike" /></div>
-            <div class="field"><label>Model</label><input type="text" id="shoe-model" placeholder="e.g. Pegasus 41" /></div>
+            <div class="field"><label>Brand</label><input type="text" id="shoe-brand" autocomplete="off" autocorrect="off" placeholder="e.g. Nike" /></div>
+            <div class="field"><label>Model</label><input type="text" id="shoe-model" autocomplete="off" autocorrect="off" placeholder="e.g. Pegasus 41" /></div>
           </div>
           <div class="form-row">
             <div class="field"><label>Starting km</label><input type="number" id="shoe-start-km" min="0" step="0.1" placeholder="0" /></div>
             <div class="field"><label>Max km (recommended)</label><input type="number" id="shoe-max-km" min="0" step="10" placeholder="800" /></div>
           </div>
-          <div class="field"><label>Notes</label><input type="text" id="shoe-notes" placeholder="Colour, size, etc." /></div>
+          <div class="field"><label>Notes</label><input type="text" id="shoe-notes" autocomplete="off" autocorrect="off" placeholder="Colour, size, etc." /></div>
           <div style="display:flex;gap:10px">
             <button type="button" id="shoe-form-cancel" class="btn-discard" style="flex:1">Cancel</button>
             <button type="button" id="shoe-form-save" class="btn-finish" style="flex:2">Save shoe</button>
