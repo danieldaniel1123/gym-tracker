@@ -303,24 +303,19 @@ function downloadCSV(){
 
   let csv="";
   if(type==="workout"){
-    csv=workoutHeader.join(",")+"
-";
+    csv=workoutHeader.join(",")+"\n";
   } else if(type==="run"){
-    csv=runHeader.join(",")+"
-";
+    csv=runHeader.join(",")+"\n";
   } else {
     // Mixed — use a unified header that covers both
-    csv=["Type","Date","Day/Title","Exercise/Distance","Muscles/Time","Equipment/Avg Pace","Set/Avg HR","Reps/Location","Weight/Shoe","Duration/Notes"].join(",")+"
-";
+    csv=["Type","Date","Day/Title","Exercise/Distance","Muscles/Time","Equipment/Avg Pace","Set/Avg HR","Reps/Location","Weight/Shoe","Duration/Notes"].join(",")+"\n";
   }
 
   rows.forEach(row=>{
     csv+=row.map(v=>{
       const s=String(v||"");
-      return s.includes(",")||s.includes('"')||s.includes("
-") ? `"${s.replace(/"/g,'""')}"` : s;
-    }).join(",")+"
-";
+      return s.includes(",")||s.includes('"')||s.includes("\n") ? `"${s.replace(/"/g,'""')}"` : s;
+    }).join(",")+"\n";
   });
 
   const blob=new Blob([csv],{type:"text/csv"});
