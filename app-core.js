@@ -122,6 +122,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   renderRunPRs();
   populateShoeDropdown();
   renderExerciseManagerList();
+  initExport();
 });
 
 function setDefaultDates(){
@@ -268,24 +269,26 @@ function startRestTimer(idx){
   if(!ex) return;
   // Always clear any existing interval for this exercise first
   if(restTimers[idx]){ clearInterval(restTimers[idx]); delete restTimers[idx]; }
+  // Use Date.now() as clock source so timer survives app switching on iOS/Chrome
+  const endTime=Date.now()+(session.exercises[idx].restRemaining*1000);
   restTimers[idx]=setInterval(()=>{
-    if(!session.exercises[idx]||session.exercises[idx].restRemaining<=0){
+    const rem=Math.max(0,Math.round((endTime-Date.now())/1000));
+    if(!session.exercises[idx]||rem<=0){
       clearInterval(restTimers[idx]); delete restTimers[idx];
       if(session.exercises[idx]) session.exercises[idx].restRemaining=null;
       showToast("Rest done — next set! 💪");
       renderExerciseList();
       return;
     }
-    session.exercises[idx].restRemaining--;
+    session.exercises[idx].restRemaining=rem;
     const inp=document.getElementById("rest-input-"+idx);
     if(inp){
-      inp.value=fmtTimer(session.exercises[idx].restRemaining);
-      const rem=session.exercises[idx].restRemaining;
+      inp.value=fmtTimer(rem);
       const color=rem<=10?"#ef4444":rem<=30?"#f59e0b":"#22c55e";
       inp.style.color=color;
       inp.style.borderColor=color+"40";
     }
-  },1000);
+  },500); // tick every 500ms for accuracy
 }
 
 function renderExerciseList(){
@@ -293,6 +296,7 @@ function renderExerciseList(){
   if(!session.exercises.length){ list.innerHTML=""; return; }
   list.innerHTML=session.exercises.map((item,idx)=>item.collapsed?buildCollapsedCard(item,idx):buildExerciseCard(item,idx)).join("");
   bindExerciseCardEvents();
+  setTimeout(initAllMuscleDiagrams, 50);
 }
 
 function bindExerciseCardEvents(){
@@ -359,8 +363,8 @@ function bindExerciseCardEvents(){
 function buildExerciseCard(item,idx){
   const {exData,sets,machineUsed}=item;
   const pr=getPRInfo(exData.name);
-  const diagramHTML=buildMuscleDiagram(exData.muscles||[]);
-  const legendHTML=(exData.muscles||[]).map(m=>{ const c=MUSCLE_COLORS[m]||{fill:"#888"}; return `<div class="muscle-legend-row"><span class="muscle-dot" style="background:${c.fill}"></span>${m}</div>`; }).join("");
+  const diagramHTML=buildMuscleDiagram(exData.muscles||[], "muscle-"+idx);
+  const legendHTML=(exData.muscles||[]).map(m=>{ const c=MUSCLE_COLORS[m]||"#888"; return `<div class="muscle-legend-row"><span class="muscle-dot" style="background:${c}"></span>${m}</div>`; }).join("");
   const equipList=exData.equipment||[];
   let machineHTML="";
   if(equipList.length===1) machineHTML=`<div class="machine-section"><div class="machine-label">Equipment</div><div class="machine-single">${equipList[0]}</div></div>`;
@@ -403,8 +407,7 @@ function buildCollapsedCard(item,idx){
   const sessionMaxW=completedSets.length?Math.max(...completedSets.map(s=>s.weight||0)):0;
   const sessionMaxR=sessionMaxW?completedSets.find(s=>(s.weight||0)===sessionMaxW)?.reps||0:0;
   const isNewPR=pr&&sessionMaxW>pr.prWeight;
-  const {fm,bm}=getMuscleColorMaps(exData.muscles||[]);
-  const miniSVGs=`<div style="opacity:${Object.keys(fm).length?1:0.2}">${buildBodySVG("front",fm,true)}<div class="collapsed-view-label">Front</div></div><div style="opacity:${Object.keys(bm).length?1:0.2}">${buildBodySVG("back",bm,true)}<div class="collapsed-view-label">Back</div></div>`;
+  const miniDiagramHTML=buildMuscleDiagram(exData.muscles||[], "cmuscle-"+idx);
   const pillsHTML=completedSets.map((s,i)=>`<span class="collapsed-pill ${s.done?"done":""}">${i+1}. ${s.reps||"—"}r · ${s.weight||"—"}kg</span>`).join("");
   const prTrophy=pr?`<div class="collapsed-stat-trophy">🏆</div>`:"";
   const prBadge=isNewPR?`<span class="collapsed-stat-badge new">↑ New PR!</span>`:pr?`<span class="collapsed-stat-badge pr">PR</span>`:"";
@@ -417,7 +420,7 @@ function buildCollapsedCard(item,idx){
       </div>
     </div>
     <div class="collapsed-body">
-      <div class="collapsed-svg-col"><div class="collapsed-svgs">${miniSVGs}</div></div>
+      <div class="collapsed-svg-col"><div class="collapsed-svgs">${miniDiagramHTML}</div></div>
       <div class="collapsed-stats">
         <div class="collapsed-stat">
           <div class="collapsed-stat-label">Session max</div>
@@ -486,6 +489,14 @@ function bindRunForm(){
   $("r-time").addEventListener("input",autoFormatTime);
   $("add-km-btn").addEventListener("click",addKmRow);
   $("r-distance").addEventListener("input",updateKmBtnState);
+  $("discard-run-btn").addEventListener("click",discardRun);
+}
+function discardRun(){
+  if(!confirm("Discard this run?")) return;
+  $("run-form").reset();
+  kmRows=[]; $("km-tbody").innerHTML="";
+  setDefaultDates(); updateKmBtnState();
+  showToast("Run discarded");
 }
 function autoFormatPace(el){ let v=el.value.replace(/\D/g,""); if(v.length>4) v=v.slice(0,4); if(v.length>=3) v=v.slice(0,2)+":"+v.slice(2); el.value=v; }
 function autoFormatTime(e){ let v=e.target.value.replace(/\D/g,""); if(v.length>=5) v=v.slice(0,2)+":"+v.slice(2,4)+":"+v.slice(4,6); else if(v.length>=3) v=v.slice(0,2)+":"+v.slice(2); e.target.value=v; }
@@ -543,11 +554,11 @@ async function saveRun(e){
   const shoeId=$("r-shoe").value;
   const shoe=shoes.find(s=>s.id==shoeId);
   const dist=parseFloat($("r-distance").value)||0;
-  const entry={id:Date.now(),type:"run",date:$("r-date").value,distance:dist||null,time:$("r-time").value.trim(),location:$("r-location").value.trim(),shoeId:shoeId||null,shoeName:shoe?`${shoe.brand} ${shoe.model}`:null,notes:$("r-notes").value.trim(),kmSplits:kmRows.length>0?kmRows.map(r=>({km:r.km,pace:r.pace,hr:r.hr?parseInt(r.hr):null})):null};
+  const entry={id:Date.now(),type:"run",title:$("r-title").value.trim()||null,date:$("r-date").value,distance:dist||null,time:$("r-time").value.trim(),location:$("r-location").value.trim(),shoeId:shoeId||null,shoeName:shoe?`${shoe.brand} ${shoe.model}`:null,notes:$("r-notes").value.trim(),kmSplits:kmRows.length>0?kmRows.map(r=>({km:r.km,pace:r.pace,hr:r.hr?parseInt(r.hr):null})):null};
   try{
     await insertRun(entry); runs.unshift(entry);
     if(shoe&&dist){ const newKm=(shoe.km||0)+dist; await updateShoe(shoe.id,{km:newKm}); shoe.km=newKm; renderShoes(); }
-    showToast("Run saved! 🏃"); $("run-form").reset(); kmRows=[]; $("km-tbody").innerHTML=""; setDefaultDates(); updateKmBtnState(); renderCalendar(); renderHistory(); renderRunPRs();
+    showToast("Run saved! 🏃"); $("run-form").reset(); $("r-title").value=""; kmRows=[]; $("km-tbody").innerHTML=""; setDefaultDates(); updateKmBtnState(); renderCalendar(); renderHistory(); renderRunPRs();
   } catch(err){ console.error(err); showToast("Error saving run — check connection"); }
 }
 
@@ -586,4 +597,88 @@ function getBestRunForDistance(targetKm){
 }
 function timeToSecs(t){ if(!t) return Infinity; const p=t.split(":").map(Number); return(p[0]||0)*3600+(p[1]||0)*60+(p[2]||0); }
 
-/* HISTORY — date grouped */
+/* HISTORY — date grouped *//* ── BODY HIGHLIGHTER ── */
+let _bodyHighlighter = null;
+function getBodyHighlighter() {
+  if(typeof createBodyHighlighter !== "undefined") return createBodyHighlighter;
+  // Try window scope
+  if(window.bodyHighlighter) return window.bodyHighlighter.createBodyHighlighter;
+  return null;
+}
+
+function buildMuscleDiagram(muscles, containerId) {
+  // Returns HTML string with two divs for front/back
+  // The actual highlighter is initialized after insertion via initMuscleDiagram()
+  const frontId = containerId + "-front";
+  const backId  = containerId + "-back";
+  return `<div class="diagram-col">
+    <div id="${frontId}" class="bh-container"></div>
+    <span class="view-label">Front</span>
+  </div>
+  <div class="diagram-col">
+    <div id="${backId}" class="bh-container"></div>
+    <span class="view-label">Back</span>
+  </div>`;
+}
+
+function initMuscleDiagram(muscles, containerId) {
+  const create = getBodyHighlighter();
+  if(!create) return;
+  const theme = document.documentElement.getAttribute("data-theme") || "dark";
+  const bodyColor = theme === "dark" ? "#3a3a3a" : "#d1d5db";
+
+  // Build unique slug list with colors for front and back
+  const frontSlugs = [], backSlugs = [];
+  const FRONT_SLUGS = new Set(["chest","front-deltoids","biceps","forearm","abs","obliques","adductor","abductors","quadriceps","knees"]);
+  const BACK_SLUGS  = new Set(["back-deltoids","triceps","upper-back","trapezius","lower-back","gluteal","hamstring","calves","left-soleus","right-soleus"]);
+
+  const seen = {};
+  muscles.forEach((m, i) => {
+    const slug = MUSCLE_TO_SLUG[m];
+    const color = MUSCLE_COLORS[m] || "#888";
+    if(!slug) return;
+    const key = slug;
+    if(!seen[key]) {
+      seen[key] = { slug, color, idx: Object.keys(seen).length };
+      if(FRONT_SLUGS.has(slug)) frontSlugs.push({ slug, color });
+      if(BACK_SLUGS.has(slug))  backSlugs.push({ slug, color });
+      // side delts appear on both
+      if(m === "Side delts") {
+        if(!frontSlugs.find(s=>s.slug===slug)) frontSlugs.push({ slug, color });
+        if(!backSlugs.find(s=>s.slug===slug))  backSlugs.push({ slug, color });
+      }
+    }
+  });
+
+  const style = { width: "52px", background: "transparent", padding: "0" };
+
+  ["front","back"].forEach(side => {
+    const id = containerId + "-" + side;
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = "";
+    const slugs = side === "front" ? frontSlugs : backSlugs;
+    const data = slugs.map((s, i) => ({ name: s.slug, muscles: [s.slug], frequency: i + 1 }));
+    const hColors = slugs.map(s => s.color);
+    try {
+      create({ container: el, data, highlightedColors: hColors.length ? hColors : ["#888"], bodyColor, side, gender: "male", style });
+      // Fix body color for dark mode
+      el.querySelectorAll("polygon, path").forEach(p => {
+        const fill = p.style.fill;
+        if(fill && (fill.includes("182, 189") || fill.includes("b6bdc3"))) {
+          p.style.fill = bodyColor;
+        }
+      });
+    } catch(e) { console.warn("body-highlighter error:", e); }
+  });
+}
+
+function initAllMuscleDiagrams() {
+  session.exercises.forEach((item, idx) => {
+    if(!item.collapsed) {
+      initMuscleDiagram(item.exData.muscles || [], "muscle-" + idx);
+    } else {
+      initMuscleDiagram(item.exData.muscles || [], "cmuscle-" + idx);
+    }
+  });
+}
