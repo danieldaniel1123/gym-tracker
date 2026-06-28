@@ -1,12 +1,12 @@
 let workouts=[],runs=[],shoes=[],customExercises=[],allExercises=[];
 let session={active:false,day:"",date:"",startTime:null,timerInterval:null,exercises:[]};
-const restTimers={};  // global map of idx -> intervalId
+var restTimers={};  // global map of idx -> intervalId
 let expandedSessions=new Set();
 let editingShoeId=null,editingExId=null;
 let exEditDays=[],exEditMuscles=[],exEditEquip=[];
 let kmRows=[];
 
-const $=id=>document.getElementById(id);
+var $=id=>document.getElementById(id);
 
 /* ══════════════════════════════════════════
    SESSION CRASH RECOVERY (localStorage buffer)
