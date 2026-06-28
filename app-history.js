@@ -217,6 +217,7 @@ function showToast(msg,type="success"){ const t=$("toast"); t.textContent=msg; t
    CSV EXPORT
    ══════════════════════════════════════════ */
 function initExport(){
+  if(!$("export-btn")) return;
   $("export-btn").addEventListener("click",showExportPanel);
   $("export-cancel-btn").addEventListener("click",()=>$("export-panel").classList.add("hidden"));
   $("export-download-btn").addEventListener("click",downloadCSV);
