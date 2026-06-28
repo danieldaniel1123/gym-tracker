@@ -122,7 +122,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   renderRunPRs();
   populateShoeDropdown();
   renderExerciseManagerList();
-  initExport();
+  if(typeof initExport==="function") initExport();
 });
 
 function setDefaultDates(){
@@ -600,9 +600,7 @@ function timeToSecs(t){ if(!t) return Infinity; const p=t.split(":").map(Number)
 /* HISTORY — date grouped *//* ── BODY HIGHLIGHTER ── */
 let _bodyHighlighter = null;
 function getBodyHighlighter() {
-  if(typeof createBodyHighlighter !== "undefined") return createBodyHighlighter;
-  // Try window scope
-  if(window.bodyHighlighter) return window.bodyHighlighter.createBodyHighlighter;
+  if(typeof window.createBodyHighlighter === "function") return window.createBodyHighlighter;
   return null;
 }
 
