@@ -206,9 +206,27 @@ function bindExerciseManager(){
   $("ex-form-save").addEventListener("click",saveExercise);
   $("ex-days-add").addEventListener("change",e=>{ const v=e.target.value; if(!v) return; if(!exEditDays.includes(v)){exEditDays.push(v);renderExTags("ex-days-tags",exEditDays,"day");} e.target.value=""; });
   $("ex-muscles-add").addEventListener("change",e=>{ const v=e.target.value; if(!v) return; if(!exEditMuscles.includes(v)){exEditMuscles.push(v);renderExTags("ex-muscles-tags",exEditMuscles,"muscle");} e.target.value=""; });
-  $("ex-equip-input").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); const v=e.target.value.trim(); if(v&&!exEditEquip.includes(v)){exEditEquip.push(v);renderExTags("ex-equip-tags",exEditEquip,"equip");} e.target.value=""; } });
+  $("ex-equip-input").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); const v=e.target.value.trim(); if(v&&!exEditEquip.includes(v)){exEditEquip.push(v);renderExTags("ex-equip-tags",exEditEquip,"equip");renderEquipChips();} e.target.value=""; } });
 }
 function openExForm(ex){ editingExId=ex?ex.id:null; exEditDays=ex?[...ex.days]:[]; exEditMuscles=ex?[...ex.muscles]:[]; exEditEquip=ex?[...ex.equipment]:[]; $("ex-name-input").value=ex?ex.name:""; renderExTags("ex-days-tags",exEditDays,"day"); renderExTags("ex-muscles-tags",exEditMuscles,"muscle"); renderExTags("ex-equip-tags",exEditEquip,"equip"); $("ex-edit-form").classList.remove("hidden"); $("ex-name-input").focus(); }
+function renderEquipChips(){
+  const el=document.getElementById("ex-equip-chips");
+  if(!el) return;
+  // Gather all known equipment from all exercises
+  const allEquip=new Set();
+  const COMMON=["Barbell","Dumbbell","Cable machine","Smith machine","EZ bar","Kettlebell","Bodyweight","Resistance band","Pull-up bar","Pec deck machine","Lat pulldown machine","Seated row machine","Leg press machine","Leg extension machine","Leg curl machine","Calf raise machine","Hip thrust machine","Ab wheel","Dip machine","Bench"];
+  COMMON.forEach(e=>allEquip.add(e));
+  allExercises.forEach(ex=>(ex.equipment||[]).forEach(e=>allEquip.add(e)));
+  const chips=[...allEquip].filter(e=>!exEditEquip.includes(e)).sort();
+  el.innerHTML=chips.map(e=>`<span class="equip-suggestion-chip" data-equip="${e}">${e}</span>`).join("");
+  el.querySelectorAll(".equip-suggestion-chip").forEach(chip=>{
+    chip.addEventListener("click",()=>{
+      const v=chip.dataset.equip;
+      if(!exEditEquip.includes(v)){exEditEquip.push(v);renderExTags("ex-equip-tags",exEditEquip,"equip");renderEquipChips();}
+    });
+  });
+}
+
 function renderExTags(elId,arr,type){ const el=$(elId); el.innerHTML=arr.map((v,i)=>`<span class="tag-chip ${type} removable" data-idx="${i}">${v} ✕</span>`).join(""); el.querySelectorAll(".tag-chip").forEach(chip=>{ chip.addEventListener("click",()=>{ const idx=parseInt(chip.dataset.idx); if(type==="day") exEditDays.splice(idx,1); else if(type==="muscle") exEditMuscles.splice(idx,1); else exEditEquip.splice(idx,1); renderExTags(elId,type==="day"?exEditDays:type==="muscle"?exEditMuscles:exEditEquip,type); }); }); }
 async function saveExercise(){ const name=$("ex-name-input").value.trim(); if(!name){ showToast("Exercise name required"); return; } const id=editingExId||Date.now(); const ex={id,name,days:exEditDays,muscles:exEditMuscles,equipment:exEditEquip}; try{ await upsertCustomExercise(ex); const existing=customExercises.findIndex(e=>e.id===id); if(existing>=0) customExercises[existing]={...ex,isCustom:true}; else customExercises.push({...ex,isCustom:true}); mergeExercises(); $("ex-edit-form").classList.add("hidden"); editingExId=null; renderExerciseManagerList(); showToast(editingExId?"Exercise updated":"Exercise added"); } catch(e){ console.error(e); showToast("Error saving exercise"); } }
 function renderExerciseManagerList(){ const q=($("ex-mgr-search").value||"").toLowerCase(); const filtered=allExercises.filter(e=>!q||e.name.toLowerCase().includes(q)); const list=$("ex-mgr-list"); if(!filtered.length){ list.innerHTML=`<div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.85rem">No exercises found</div>`; return; } list.innerHTML=filtered.map(ex=>`<div class="ex-card"><div class="ex-card-header"><span class="ex-card-name">${ex.name}</span><div class="ex-card-actions"><button class="ex-card-btn" data-id="${ex.id}">Edit</button>${ex.isCustom?`<button class="ex-card-btn danger" data-id="${ex.id}" data-delete="true">Delete</button>`:""}</div></div><div class="ex-card-body"><div class="tag-row">${(ex.days||[]).map(d=>`<span class="tag-chip day">${d}</span>`).join("")}</div><div class="tag-row">${(ex.muscles||[]).map(m=>`<span class="tag-chip muscle">${m}</span>`).join("")}</div><div class="tag-row">${(ex.equipment||[]).map(e=>`<span class="tag-chip equip">${e}</span>`).join("")}</div></div></div>`).join(""); list.querySelectorAll(".ex-card-btn:not([data-delete])").forEach(btn=>{ btn.addEventListener("click",()=>{ const ex=allExercises.find(e=>String(e.id)===String(btn.dataset.id)); if(ex) openExForm(ex); }); }); list.querySelectorAll(".ex-card-btn[data-delete]").forEach(btn=>{ btn.addEventListener("click",async()=>{ if(!confirm("Delete this exercise?")) return; try{ await deleteCustomExercise(btn.dataset.id); customExercises=customExercises.filter(e=>String(e.id)!==String(btn.dataset.id)); mergeExercises(); renderExerciseManagerList(); showToast("Exercise deleted"); } catch(e){ showToast("Error deleting"); } }); }); }
@@ -227,14 +245,45 @@ function bindSessionControls(){
   });
 }
 function toggleExercisePicker(){ const p=$("exercise-picker"); const hidden=p.classList.contains("hidden"); p.classList.toggle("hidden",!hidden); if(hidden){ $("exercise-search").value=""; renderExercisePickerList(); $("exercise-search").focus(); } }
-function renderExercisePickerList(){ const q=$("exercise-search").value.toLowerCase(); const added=new Set(session.exercises.map(e=>e.exData.name)); const filtered=allExercises.filter(e=>e.days.includes(session.day)&&!added.has(e.name)&&(!q||e.name.toLowerCase().includes(q))); const list=$("exercise-picker-list"); if(!filtered.length){ list.innerHTML=`<div style="padding:12px;color:var(--muted);font-size:0.85rem;text-align:center">${added.size>0&&!q?"All exercises added":"No exercises found"}</div>`; return; } list.innerHTML=filtered.map(e=>`<div class="picker-item" data-name="${e.name}"><div class="picker-item-name">${e.name}</div><div class="picker-item-muscles">${(e.muscles||[]).slice(0,3).join(" · ")}</div></div>`).join(""); list.querySelectorAll(".picker-item").forEach(item=>{ item.addEventListener("click",()=>{ addExerciseToSession(item.dataset.name); $("exercise-picker").classList.add("hidden"); }); }); }
+function renderExercisePickerList(){
+  const q=$("exercise-search").value.toLowerCase();
+  const added=new Set(session.exercises.map(e=>e.exData.name));
+  const filtered=allExercises.filter(e=>{
+    if(added.has(e.name)) return false;
+    if(q) return e.name.toLowerCase().includes(q);
+    return e.days.includes(session.day);
+  });
+  const list=$("exercise-picker-list");
+  // Section label
+  const sectionLabel=q?`<div style="padding:6px 12px 2px;font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em">Search results</div>`:`<div style="padding:6px 12px 2px;font-size:0.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em">${session.day} exercises</div>`;
+  const newExBtn=`<div class="picker-item picker-new-ex" id="picker-new-ex-btn" style="border-top:1px solid var(--border);color:var(--accent)"><div class="picker-item-name">+ Create new exercise</div><div class="picker-item-muscles">Add to exercise library</div></div>`;
+  if(!filtered.length){
+    list.innerHTML=sectionLabel+`<div style="padding:12px;color:var(--muted);font-size:0.85rem;text-align:center">${added.size>0&&!q?"All exercises added":"No exercises found"}</div>`+newExBtn;
+  } else {
+    list.innerHTML=sectionLabel+filtered.map(e=>`<div class="picker-item" data-name="${e.name}"><div class="picker-item-name">${e.name}</div><div class="picker-item-muscles">${(e.muscles||[]).slice(0,3).join(" · ")}</div></div>`).join("")+newExBtn;
+  }
+  list.querySelectorAll(".picker-item[data-name]").forEach(item=>{ item.addEventListener("click",()=>{ addExerciseToSession(item.dataset.name); $("exercise-picker").classList.add("hidden"); }); });
+  const newBtn=document.getElementById("picker-new-ex-btn");
+  if(newBtn) newBtn.addEventListener("click",()=>{ $("exercise-picker").classList.add("hidden"); $("exercise-manager").classList.remove("hidden"); openExForm(null); $("exercise-manager").scrollIntoView({behavior:"smooth"}); });
+}
+
+function openInlineExEdit(idx) {
+  const ex = session.exercises[idx].exData;
+  // Open exercise manager with this exercise pre-loaded
+  document.querySelector('[data-tab="workout"]') && null; // already on workout tab
+  const mgr = document.getElementById("exercise-manager");
+  mgr.classList.remove("hidden");
+  // Scroll to it
+  mgr.scrollIntoView({behavior:"smooth",block:"start"});
+  openExForm(ex);
+}
 
 function addExerciseToSession(name){
   const exData=allExercises.find(e=>e.name===name); if(!exData) return;
-  const lastSets=getLastSessionSets(name);
-  const sets=lastSets.length>0?lastSets.map(s=>({reps:s.reps,weight:s.weight,done:false})):[{reps:"",weight:"",done:false}];
+  // Always start with one empty set (no pre-fill from last session)
+  const sets=[{reps:"",weight:"",done:false}];
   const savedTimer=JSON.parse(localStorage.getItem('gt_rest_timer')||'120');
-  session.exercises.push({exData,sets,machineUsed:(exData.equipment||[])[0]||null,collapsed:false,restDuration:savedTimer,restRemaining:null,restInterval:null,restConfigMode:false});
+  session.exercises.push({exData,sets,machineUsed:(exData.equipment||[])[0]||null,collapsed:false,restDuration:savedTimer,restRemaining:null,restInterval:null,restConfigMode:false,notes:""});
   saveSessionToLocal();
   renderExerciseList();
   setTimeout(()=>{ const cards=document.querySelectorAll(".exercise-card,.exercise-card-collapsed"); if(cards.length) cards[cards.length-1].scrollIntoView({behavior:"smooth",block:"start"}); },50);
@@ -308,6 +357,15 @@ function bindExerciseCardEvents(){
   list.querySelectorAll(".exercise-card-del,.collapsed-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ session.exercises.splice(parseInt(e.target.dataset.exIdx),1); saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".exercise-save-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].collapsed=true; saveSessionToLocal(); renderExerciseList(); }); });
 
+  // 1. Edit exercise inline
+  list.querySelectorAll(".exercise-edit-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); openInlineExEdit(idx); }); });
+
+  // 2. Minimize button
+  list.querySelectorAll(".exercise-minimize-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].collapsed=true; saveSessionToLocal(); renderExerciseList(); }); });
+
+  // 6. Notes per exercise
+  list.querySelectorAll(".exercise-notes-input").forEach(inp=>{ inp.addEventListener("change",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].notes=e.target.value; saveSessionToLocal(); }); });
+
   list.querySelectorAll(".collapsed-expand-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].collapsed=false; saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".machine-radio").forEach(radio=>{ radio.addEventListener("change",e=>{ const {exIdx}=e.target.dataset; session.exercises[exIdx].machineUsed=e.target.value; saveSessionToLocal(); }); });
 
@@ -358,6 +416,28 @@ function bindExerciseCardEvents(){
 
   // Restart timers for active exercises after re-render
   // Timers continue running independently — no restart needed
+
+  // 4. Drag to reorder
+  const cards = list.querySelectorAll('.exercise-card[draggable]');
+  let dragSrcIdx = null;
+  cards.forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragSrcIdx = parseInt(card.dataset.exIdx);
+      card.style.opacity = '0.5';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', e => { card.style.opacity = ''; });
+    card.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; card.style.borderTop = '2px solid var(--accent)'; });
+    card.addEventListener('dragleave', e => { card.style.borderTop = ''; });
+    card.addEventListener('drop', e => {
+      e.preventDefault(); card.style.borderTop = '';
+      const dropIdx = parseInt(card.dataset.exIdx);
+      if(dragSrcIdx === null || dragSrcIdx === dropIdx) return;
+      const moved = session.exercises.splice(dragSrcIdx, 1)[0];
+      session.exercises.splice(dropIdx, 0, moved);
+      saveSessionToLocal(); renderExerciseList();
+    });
+  });
 }
 
 function buildExerciseCard(item,idx){
@@ -396,7 +476,7 @@ function buildExerciseCard(item,idx){
       <button class="rest-side-action muted" data-action="${rightAction}" data-ex-idx="${idx}">${rightLabel}</button>
     </div>`;
 
-  return `<div class="exercise-card"><div class="exercise-card-header"><span class="exercise-card-name">${exData.name}</span><div class="exercise-card-actions"><button class="exercise-card-del" data-ex-idx="${idx}">✕</button></div></div><div class="muscle-section"><div class="muscle-diagrams">${diagramHTML}</div><div class="muscle-legend"><div class="muscle-legend-title">Muscles</div>${legendHTML}<div class="equip-section">${(exData.equipment||[]).map(e=>`<div class="equip-row"><span class="equip-dot"></span>${e}</div>`).join("")}</div></div></div>${machineHTML}${prHTML}<div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span><span></span></div>${setsHTML}<div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button></div>${restTimerHTML}<div class="save-ex-row"><button class="exercise-save-btn" data-ex-idx="${idx}">✓ Save exercise</button></div></div>`;
+  return `<div class="exercise-card" id="ex-card-${idx}" draggable="true" data-ex-idx="${idx}"><div class="exercise-card-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="exercise-card-name">${exData.name}</span><div class="exercise-card-actions"><button class="exercise-edit-btn" data-ex-idx="${idx}" title="Edit exercise">✏️</button><button class="exercise-minimize-btn" data-ex-idx="${idx}" title="Minimize">−</button><button class="exercise-card-del" data-ex-idx="${idx}">✕</button></div></div><div class="muscle-section"><div class="muscle-diagrams">${diagramHTML}</div><div class="muscle-legend"><div class="muscle-legend-title">Muscles</div>${legendHTML}<div class="equip-section">${(exData.equipment||[]).map(e=>`<div class="equip-row"><span class="equip-dot"></span>${e}</div>`).join("")}</div></div></div>${machineHTML}${prHTML}<div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span><span></span></div>${setsHTML}<div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button></div>${restTimerHTML}<div class="exercise-notes-row"><textarea class="exercise-notes-input" data-ex-idx="${idx}" placeholder="Notes (optional)…" rows="2" autocomplete="off" autocorrect="off">${item.notes||""}</textarea></div><div class="save-ex-row"><button class="exercise-save-btn" data-ex-idx="${idx}">✓ Save exercise</button></div></div>`;
 }
 
 function buildCollapsedCard(item,idx){
