@@ -495,3 +495,64 @@ textarea { resize:vertical; min-height:72px; line-height:1.5; }
 @media (max-width: 430px) {
   .export-row { grid-template-columns: 1fr; }
 }
+
+/* ── EXERCISE CARD UPDATES ── */
+.drag-handle {
+  color: var(--muted); font-size: 1rem; cursor: grab;
+  padding: 2px 6px; margin-right: 4px; flex-shrink: 0;
+  user-select: none;
+}
+.drag-handle:active { cursor: grabbing; }
+.exercise-edit-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: 5px; padding: 3px 8px; font-size: 0.8rem;
+  cursor: pointer; color: var(--muted); transition: all 0.15s;
+}
+.exercise-edit-btn:hover { color: var(--text); border-color: var(--muted); }
+.exercise-minimize-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: 5px; padding: 3px 8px; font-size: 1rem;
+  cursor: pointer; color: var(--muted); font-weight: 700;
+  transition: all 0.15s; line-height: 1;
+}
+.exercise-minimize-btn:hover { color: var(--text); border-color: var(--muted); }
+
+/* ── EXERCISE NOTES ── */
+.exercise-notes-row { padding: 8px 16px; border-top: 1px solid var(--border); }
+.exercise-notes-input {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 0.82rem;
+  padding: 7px 10px; resize: none; font-family: inherit; outline: none;
+  transition: border-color 0.15s;
+}
+.exercise-notes-input:focus { border-color: var(--accent); }
+.exercise-notes-input::placeholder { color: var(--muted); }
+
+/* ── EQUIPMENT CHIPS ── */
+.equip-chips-wrap {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  margin-top: 6px; margin-bottom: 4px;
+}
+.equip-suggestion-chip {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 10px; font-size: 0.75rem;
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  user-select: none;
+}
+.equip-suggestion-chip:hover {
+  background: rgba(29,158,117,0.1);
+  border-color: rgba(29,158,117,0.35);
+  color: #0F6E56;
+}
+
+/* ── PICKER NEW EXERCISE ── */
+.picker-new-ex {
+  border-top: 1px solid var(--border) !important;
+  color: var(--accent) !important;
+}
+.picker-new-ex .picker-item-name { color: var(--accent) !important; font-weight: 700; }
+.picker-new-ex .picker-item-muscles { color: var(--muted) !important; }
+
+/* Exercise card drag over state */
+.exercise-card[draggable="true"] { cursor: default; }
+.exercise-card.drag-over { border-top: 2px solid var(--accent); }
