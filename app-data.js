@@ -87,7 +87,7 @@ var MUSCLE_TO_SLUG = {
   "Lats":                   "upper-back",
 };
 
-var DAY_OPTIONS = ["Push","Pull","Legs","Back & Biceps","Back & Triceps","Chest & Biceps","Arms","Shoulder","Full body","Upper body","Lower body"];
+var DAY_OPTIONS = ["Push","Pull","Legs","Back & Biceps","Back & Triceps","Chest & Biceps","Chest & Triceps","Arms","Shoulder","Full body","Upper body","Lower body"];
 var ALL_MUSCLES = Object.keys(MUSCLE_COLORS);
 var RUN_DISTANCES = [{label:"5k",km:5},{label:"10k",km:10},{label:"16k",km:16},{label:"21k",km:21.1},{label:"42k",km:42.2},{label:"50k",km:50}];
 
@@ -96,20 +96,20 @@ var RUN_DISTANCES = [{label:"5k",km:5},{label:"10k",km:10},{label:"16k",km:16},{
    ══════════════════════════════════════════ */
 var BUILTIN_EXERCISES = [
   // ── CHEST ──
-  {name:"Bench Press (Flat)",            days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (middle)","Front delts","Triceps (lateral head)"],     equipment:["Barbell","Smith machine"]},
-  {name:"Bench Press (Incline)",         days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (upper)","Front delts","Triceps (lateral head)"],       equipment:["Barbell","Smith machine"]},
-  {name:"Bench Press (Decline)",         days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (lower)","Triceps (lateral head)"],                     equipment:["Barbell","Smith machine"]},
-  {name:"Flat Barbell Bench Press",      days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (middle)","Front delts","Triceps (lateral head)"],      equipment:["Barbell"]},
-  {name:"Incline Dumbbell Press",        days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (upper)","Front delts","Triceps (lateral head)"],       equipment:["Dumbbell"]},
-  {name:"Flat Dumbbell Chest Press",     days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (middle)","Front delts","Triceps (lateral head)"],      equipment:["Dumbbell"]},
-  {name:"Chest Press (Flat)",            days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (middle)","Front delts","Triceps"],                     equipment:["Cable machine","Pec deck machine"]},
-  {name:"Chest Press (Incline)",         days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (upper)","Front delts","Triceps"],                      equipment:["Cable machine"]},
-  {name:"Chest Press (Decline)",         days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (lower)","Triceps (lateral head)"],                     equipment:["Cable machine","Smith machine"]},
-  {name:"Pectoral Fly",                  days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (middle)"],                                             equipment:["Pec deck machine"]},
-  {name:"Dumbbell Fly (Incline)",        days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (upper)","Front delts"],                               equipment:["Dumbbell"]},
-  {name:"Decline Pectoral Fly",          days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (lower)"],                                             equipment:["Pec deck machine","Cable machine"]},
-  {name:"Cable Chest Fly",               days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (middle)","Front delts"],                              equipment:["Cable machine"]},
-  {name:"Push-up",                       days:["Push","Chest & Biceps","Upper body","Full body"], muscles:["Chest (middle)","Front delts","Triceps (lateral head)"],      equipment:["Bodyweight"]},
+  {name:"Bench Press (Flat)",            days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (middle)","Front delts","Triceps (lateral head)"],     equipment:["Barbell","Smith machine"]},
+  {name:"Bench Press (Incline)",         days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (upper)","Front delts","Triceps (lateral head)"],       equipment:["Barbell","Smith machine"]},
+  {name:"Bench Press (Decline)",         days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (lower)","Triceps (lateral head)"],                     equipment:["Barbell","Smith machine"]},
+  {name:"Flat Barbell Bench Press",      days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (middle)","Front delts","Triceps (lateral head)"],      equipment:["Barbell"]},
+  {name:"Incline Dumbbell Press",        days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (upper)","Front delts","Triceps (lateral head)"],       equipment:["Dumbbell"]},
+  {name:"Flat Dumbbell Chest Press",     days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (middle)","Front delts","Triceps (lateral head)"],      equipment:["Dumbbell"]},
+  {name:"Chest Press (Flat)",            days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (middle)","Front delts","Triceps"],                     equipment:["Cable machine","Pec deck machine"]},
+  {name:"Chest Press (Incline)",         days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (upper)","Front delts","Triceps"],                      equipment:["Cable machine"]},
+  {name:"Chest Press (Decline)",         days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (lower)","Triceps (lateral head)"],                     equipment:["Cable machine","Smith machine"]},
+  {name:"Pectoral Fly",                  days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (middle)"],                                             equipment:["Pec deck machine"]},
+  {name:"Dumbbell Fly (Incline)",        days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (upper)","Front delts"],                               equipment:["Dumbbell"]},
+  {name:"Decline Pectoral Fly",          days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (lower)"],                                             equipment:["Pec deck machine","Cable machine"]},
+  {name:"Cable Chest Fly",               days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (middle)","Front delts"],                              equipment:["Cable machine"]},
+  {name:"Push-up",                       days:["Push","Chest & Biceps","Upper body","Full body","Chest & Triceps"], muscles:["Chest (middle)","Front delts","Triceps (lateral head)"],      equipment:["Bodyweight"]},
 
   // ── BACK ──
   {name:"Deadlift",                      days:["Pull","Back & Biceps","Legs","Lower body","Full body"], muscles:["Hamstrings","Glutes","Lower back (erector)","Traps"],   equipment:["Barbell"]},
@@ -160,20 +160,20 @@ var BUILTIN_EXERCISES = [
   {name:"Biceps Curl Isolation",         days:["Pull","Arms","Back & Biceps","Chest & Biceps"], muscles:["Biceps"],                         equipment:["Dumbbell","Cable machine"]},
 
   // ── TRICEPS ──
-  {name:"Skull Crusher",                 days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (long head)"],                               equipment:["EZ bar","Barbell","Dumbbell"]},
-  {name:"Incline Skull Crusher",         days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (long head)"],                               equipment:["EZ bar","Barbell","Dumbbell"]},
-  {name:"Dumbbell Skull Crusher",        days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (long head)"],                               equipment:["Dumbbell"]},
-  {name:"Overhead Triceps Extension",    days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (long head)"],                               equipment:["Dumbbell","Cable machine","EZ bar"]},
-  {name:"Triceps Pushdown",              days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (lateral head)"],                            equipment:["Cable machine"]},
-  {name:"Rope Triceps Pushdown",         days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (lateral head)","Triceps (medial head)"],    equipment:["Cable machine"]},
-  {name:"Straight-Bar Triceps Pushdown", days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (lateral head)"],                            equipment:["Cable machine"]},
-  {name:"Cable Triceps Pushdown",        days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (lateral head)"],                            equipment:["Cable machine"]},
-  {name:"Close-Grip Bench Press",        days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (medial head)","Chest (middle)"],            equipment:["Barbell","Smith machine"]},
-  {name:"Triceps Dips",                  days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (lateral head)","Chest (lower)","Front delts"], equipment:["Bodyweight","Dip machine"]},
-  {name:"Flat Triceps Extension",        days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (long head)"],                               equipment:["Barbell","Dumbbell","EZ bar"]},
-  {name:"Bent-Over Triceps Extension",   days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (long head)"],                               equipment:["Dumbbell","Cable machine"]},
-  {name:"Reverse Triceps Extension",     days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (medial head)"],                             equipment:["Cable machine"]},
-  {name:"Triceps Extension",             days:["Push","Arms","Back & Triceps","Upper body"], muscles:["Triceps (long head)"],                               equipment:["Dumbbell","Cable machine","EZ bar"]},
+  {name:"Skull Crusher",                 days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (long head)"],                               equipment:["EZ bar","Barbell","Dumbbell"]},
+  {name:"Incline Skull Crusher",         days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (long head)"],                               equipment:["EZ bar","Barbell","Dumbbell"]},
+  {name:"Dumbbell Skull Crusher",        days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (long head)"],                               equipment:["Dumbbell"]},
+  {name:"Overhead Triceps Extension",    days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (long head)"],                               equipment:["Dumbbell","Cable machine","EZ bar"]},
+  {name:"Triceps Pushdown",              days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (lateral head)"],                            equipment:["Cable machine"]},
+  {name:"Rope Triceps Pushdown",         days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (lateral head)","Triceps (medial head)"],    equipment:["Cable machine"]},
+  {name:"Straight-Bar Triceps Pushdown", days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (lateral head)"],                            equipment:["Cable machine"]},
+  {name:"Cable Triceps Pushdown",        days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (lateral head)"],                            equipment:["Cable machine"]},
+  {name:"Close-Grip Bench Press",        days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (medial head)","Chest (middle)"],            equipment:["Barbell","Smith machine"]},
+  {name:"Triceps Dips",                  days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (lateral head)","Chest (lower)","Front delts"], equipment:["Bodyweight","Dip machine"]},
+  {name:"Flat Triceps Extension",        days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (long head)"],                               equipment:["Barbell","Dumbbell","EZ bar"]},
+  {name:"Bent-Over Triceps Extension",   days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (long head)"],                               equipment:["Dumbbell","Cable machine"]},
+  {name:"Reverse Triceps Extension",     days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (medial head)"],                             equipment:["Cable machine"]},
+  {name:"Triceps Extension",             days:["Push","Arms","Back & Triceps","Upper body","Chest & Triceps"], muscles:["Triceps (long head)"],                               equipment:["Dumbbell","Cable machine","EZ bar"]},
 
   // ── LEGS ──
   {name:"Barbell Squat",                 days:["Legs","Lower body","Full body"], muscles:["Quads","Glutes","Hamstrings"],                       equipment:["Barbell","Smith machine"]},
