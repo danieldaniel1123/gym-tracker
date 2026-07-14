@@ -95,7 +95,6 @@ document.addEventListener("DOMContentLoaded",async()=>{
   bindExerciseManager();
   bindSessionControls();
   bindRunForm();
-  bindGPSTracker();
   bindHistory();
   bindCalendar();
   bindRecords();
