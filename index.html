@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Gym Tracker</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#e8533a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GymTracker" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <!-- Leaflet map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module">
     try {
@@ -281,6 +291,11 @@
   </main>
 
   <div id="toast" class="toast hidden"></div>
+  <script>
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.register("/sw.js").then(r=>console.log("SW registered")).catch(e=>console.warn("SW failed:",e));
+    }
+  </script>
   <script src="app-data.js"></script>
   <script src="app-core.js"></script>
   <script src="app-history.js"></script>
