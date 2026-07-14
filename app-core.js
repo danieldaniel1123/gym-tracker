@@ -452,7 +452,7 @@ function buildExerciseCard(item,idx){
   if(equipList.length===1) machineHTML=`<div class="machine-section"><div class="machine-label">Equipment</div><div class="machine-single">${equipList[0]}</div></div>`;
   else if(equipList.length>1) machineHTML=`<div class="machine-section"><div class="machine-label">Equipment used</div><div class="machine-radios">${equipList.map(eq=>`<label class="machine-radio-item"><input type="radio" class="machine-radio" name="machine_${idx}" value="${eq}" data-ex-idx="${idx}" ${(machineUsed||equipList[0])===eq?"checked":""}>${eq}</label>`).join("")}</div></div>`;
   const prHTML=pr?`<div class="pr-strip"><div class="pr-item"><span class="pr-label">Last session</span><span class="pr-value">${pr.lastWeight?pr.lastWeight+"kg × "+pr.lastReps:"—"}</span></div><div class="pr-divider"></div><div class="pr-item"><span class="pr-label">All-time PR</span><span class="pr-value">${pr.prWeight?pr.prWeight+"kg × "+pr.prReps:"—"}</span></div></div>`:"";
-  const setsHTML=sets.map((set,sIdx)=>`<div class="set-row ${set.done?"completed":""}"><span class="set-num">${sIdx+1}</span><input class="set-input" type="number" min="0" max="999" step="1" value="${set.reps||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="reps"/><input class="set-input" type="number" min="0" max="9999" step="0.5" value="${set.weight||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="weight"/><button class="set-check ${set.done?"done":""}" data-ex-idx="${idx}" data-set-idx="${sIdx}">✓</button><button class="set-del-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}" title="Remove set">✕</button></div>`).join("");
+  const setsHTML=sets.map((set,sIdx)=>`<div class="set-row ${set.done?"completed":""}"><span class="set-num">${sIdx+1}</span><input class="set-input" type="number" min="0" max="999" step="1" value="${set.reps||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="reps" inputmode="numeric"/><input class="set-input" type="number" min="0" max="9999" step="0.5" value="${set.weight||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="weight" inputmode="decimal"/><button class="set-check ${set.done?"done":""}" data-ex-idx="${idx}" data-set-idx="${sIdx}">✓</button><button class="set-del-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}" title="Remove set">✕</button></div>`).join("");
 
   // Rest timer
   const isConfig=item.restConfigMode||false;
@@ -624,8 +624,8 @@ function renderKmTable(){
   tbody.innerHTML=kmRows.map((row,i)=>`
     <tr>
       <td class="km-cell-num ${row.partial?"partial":""}">${row.km}</td>
-      <td><input class="km-input" type="text" placeholder="5:00" maxlength="5" value="${row.pace||""}" data-idx="${i}" data-field="pace" inputmode="numeric" oninput="autoFormatPace(this)" onchange="kmRows[${i}].pace=this.value" /></td>
-      <td><input class="km-input" type="number" placeholder="150" min="0" max="250" value="${row.hr||""}" data-idx="${i}" data-field="hr" onchange="kmRows[${i}].hr=this.value" /></td>
+      <td><input class="km-input" type="text" placeholder="5:00" maxlength="5" value="${row.pace||""}" data-idx="${i}" data-field="pace" inputmode="numeric" oninput="autoFormatPace(this)" onchange="kmRows[${i}].pace=this.value" inputmode="numeric" /></td>
+      <td><input class="km-input" type="number" placeholder="150" min="0" max="250" value="${row.hr||""}" data-idx="${i}" data-field="hr" onchange="kmRows[${i}].hr=this.value" inputmode="numeric" /></td>
       <td><button class="km-del-btn" onclick="deleteKmRow(${i})">✕</button></td>
     </tr>`).join("");
 }
@@ -762,5 +762,3 @@ function initAllMuscleDiagrams() {
     }
   });
 }
-
-
