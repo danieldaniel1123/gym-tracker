@@ -143,30 +143,6 @@
 
     <!-- ── RUN ── -->
     <section id="tab-run" class="tab">
-      <!-- GPS Live Tracker -->
-      <div id="gps-tracker" class="card gps-card" style="margin-bottom:1rem">
-        <div class="gps-header">
-          <div class="gps-status">
-            <span class="gps-dot" id="gps-dot"></span>
-            <span id="gps-status-text">Ready to track</span>
-          </div>
-          <div class="gps-controls">
-            <button id="gps-start-btn" class="gps-btn gps-btn-start">&#9654; Start Run</button>
-            <button id="gps-stop-btn" class="gps-btn gps-btn-stop hidden">&#9646; Stop</button>
-            <button id="gps-pause-btn" class="gps-btn gps-btn-pause hidden">&#9646;&#9646; Pause</button>
-          </div>
-        </div>
-        <div id="gps-stats" class="gps-stats hidden">
-          <div class="gps-stat"><div class="gps-stat-val" id="gps-distance">0.00</div><div class="gps-stat-lbl">km</div></div>
-          <div class="gps-stat"><div class="gps-stat-val" id="gps-time">00:00</div><div class="gps-stat-lbl">time</div></div>
-          <div class="gps-stat"><div class="gps-stat-val" id="gps-pace">--:--</div><div class="gps-stat-lbl">/km pace</div></div>
-        </div>
-        <div id="gps-map" class="gps-map hidden"></div>
-        <div id="gps-fill-btn-wrap" class="hidden" style="padding:0.75rem 1rem 0">
-          <button id="gps-fill-btn" class="btn-primary">&#8595; Use this data in log form</button>
-        </div>
-      </div>
-
       <form id="run-form" class="card form-card" autocomplete="off">
         <h2 class="form-title">Log run</h2>
         <div class="field">
@@ -189,7 +165,7 @@
         <div class="form-row">
           <div class="field">
             <label>Distance (km)</label>
-            <input type="number" id="r-distance" autocomplete="off" min="0" step="0.01" placeholder="5.0" />
+            <input type="number" id="r-distance" inputmode="decimal" autocomplete="off" min="0" step="0.01" placeholder="5.0" />
           </div>
           <div class="field">
             <label>Time (hh:mm:ss)</label>
@@ -299,8 +275,8 @@
             <div class="field"><label>Model</label><input type="text" id="shoe-model" autocomplete="off" autocorrect="off" placeholder="e.g. Pegasus 41" /></div>
           </div>
           <div class="form-row">
-            <div class="field"><label>Starting km</label><input type="number" id="shoe-start-km" min="0" step="0.1" placeholder="0" /></div>
-            <div class="field"><label>Max km (recommended)</label><input type="number" id="shoe-max-km" min="0" step="10" placeholder="800" /></div>
+            <div class="field"><label>Starting km</label><input type="number" id="shoe-start-km" inputmode="decimal" min="0" step="0.1" placeholder="0" /></div>
+            <div class="field"><label>Max km (recommended)</label><input type="number" id="shoe-max-km" inputmode="numeric" min="0" step="10" placeholder="800" /></div>
           </div>
           <div class="field"><label>Notes</label><input type="text" id="shoe-notes" autocomplete="off" autocorrect="off" placeholder="Colour, size, etc." /></div>
           <div style="display:flex;gap:10px">
