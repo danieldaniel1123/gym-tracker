@@ -200,7 +200,42 @@ function showDayDetail(date){ const dw=workouts.filter(w=>w.date===date),dr=runs
 
 /* PERSONAL RECORDS */
 function bindRecords(){ $("pr-search").addEventListener("input",renderRecords); }
-function renderRecords(){ const q=$("pr-search").value.toLowerCase(),pm={}; workouts.forEach(w=>{ if(!w.exercise)return; if(!pm[w.exercise]) pm[w.exercise]={name:w.exercise,day:w.day,maxWeight:0,maxReps:0,lastWeight:0,lastReps:0,lastDate:""}; const pr=pm[w.exercise]; const sets=w.sets_detail||(w.weight?[{weight:w.weight,reps:w.reps||0}]:[]); sets.forEach(s=>{ if((s.weight||0)>pr.maxWeight){pr.maxWeight=s.weight;pr.maxReps=s.reps||0;} if((s.reps||0)>pr.maxReps&&(s.weight||0)>=pr.maxWeight) pr.maxReps=s.reps||0; }); if(w.date>=pr.lastDate){ pr.lastDate=w.date; const h=sets.reduce((a,b)=>(b.weight||0)>(a.weight||0)?b:a,sets[0]||{}); pr.lastWeight=h.weight||0; pr.lastReps=h.reps||0; } }); let items=Object.values(pm).sort((a,b)=>a.name.localeCompare(b.name)); if(q) items=items.filter(i=>i.name.toLowerCase().includes(q)); const list=$("records-list"); if(!items.length){ list.innerHTML=`<div class="empty-state"><div class="empty-icon">🏆</div><p>${q?"No matching exercises.":"Log workouts to see your PRs here."}</p></div>`; return; } list.innerHTML=items.map(pr=>`<div class="record-card"><div><div class="record-name">${pr.name}</div><div class="record-day">${pr.day||""}</div></div><div class="record-stats"><div><div class="record-stat-label">Last session</div><div class="record-stat-value">${pr.lastWeight?pr.lastWeight+"kg":"—"}</div><div class="record-stat-sub">${pr.lastReps?pr.lastReps+" reps":""} ${pr.lastDate?"· "+formatDate(pr.lastDate):""}</div></div><div><div class="record-stat-label">All-time PR</div><div class="record-stat-value">${pr.maxWeight?pr.maxWeight+"kg":"—"}</div><div class="record-stat-sub">${pr.maxReps?pr.maxReps+" reps max":""}</div></div></div></div>`).join(""); }
+function renderRecords(){
+  const q=$("pr-search").value.toLowerCase(), pm={};
+  workouts.forEach(w=>{
+    if(!w.exercise) return;
+    const machine=w.machine_used||w.machineUsed||null;
+    // Group by exercise + machine so each machine gets its own PR record
+    const key=w.exercise+(machine?"__"+machine:"");
+    if(!pm[key]) pm[key]={name:w.exercise,machine,day:w.day,maxWeight:0,maxReps:0,lastWeight:0,lastReps:0,lastDate:""};
+    const pr=pm[key];
+    const sets=w.sets_detail||(w.weight?[{weight:w.weight,reps:w.reps||0}]:[]);
+    sets.forEach(s=>{ if((s.weight||0)>pr.maxWeight){pr.maxWeight=s.weight;pr.maxReps=s.reps||0;} if((s.reps||0)>pr.maxReps&&(s.weight||0)>=pr.maxWeight) pr.maxReps=s.reps||0; });
+    if(w.date>=pr.lastDate){ pr.lastDate=w.date; const h=sets.reduce((a,b)=>(b.weight||0)>(a.weight||0)?b:a,sets[0]||{}); pr.lastWeight=h.weight||0; pr.lastReps=h.reps||0; }
+  });
+  let items=Object.values(pm).sort((a,b)=>a.name.localeCompare(b.name)||( a.machine||"").localeCompare(b.machine||""));
+  if(q) items=items.filter(i=>i.name.toLowerCase().includes(q)||(i.machine||"").toLowerCase().includes(q));
+  const list=$("records-list");
+  if(!items.length){ list.innerHTML=`<div class="empty-state"><div class="empty-icon">🏆</div><p>${q?"No matching exercises.":"Log workouts to see your PRs here."}</p></div>`; return; }
+  list.innerHTML=items.map(pr=>`<div class="record-card">
+    <div>
+      <div class="record-name">${pr.name}</div>
+      <div class="record-day">${[pr.day,pr.machine].filter(Boolean).join(" · ")||""}</div>
+    </div>
+    <div class="record-stats">
+      <div>
+        <div class="record-stat-label">Last session</div>
+        <div class="record-stat-value">${pr.lastWeight?pr.lastWeight+"kg":"—"}</div>
+        <div class="record-stat-sub">${pr.lastReps?pr.lastReps+" reps":""} ${pr.lastDate?"· "+formatDate(pr.lastDate):""}</div>
+      </div>
+      <div>
+        <div class="record-stat-label">All-time PR</div>
+        <div class="record-stat-value">${pr.maxWeight?pr.maxWeight+"kg":"—"}</div>
+        <div class="record-stat-sub">${pr.maxReps?pr.maxReps+" reps max":""}</div>
+      </div>
+    </div>
+  </div>`).join("");
+}
 
 /* SHOES */
 function bindShoes(){ $("add-shoe-btn").addEventListener("click",()=>{ editingShoeId=null; $("shoe-form-title").textContent="Add shoe"; $("shoe-brand").value=""; $("shoe-model").value=""; $("shoe-start-km").value=""; $("shoe-max-km").value="800"; $("shoe-notes").value=""; $("shoe-form-wrap").classList.remove("hidden"); $("shoe-brand").focus(); }); $("shoe-form-cancel").addEventListener("click",()=>{ $("shoe-form-wrap").classList.add("hidden"); editingShoeId=null; }); $("shoe-form-save").addEventListener("click",saveShoe); }
