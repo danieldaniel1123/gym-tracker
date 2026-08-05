@@ -47,7 +47,7 @@ function renderHistory(){
     const previewPills=dateItems.map(item=>{
       if(item.type==="run") return `<span class="preview-pill">🏃 Run${item.distance?" · "+item.distance+"km":""}</span>`;
       return `<span class="preview-pill">${item.day}</span>`;
-    }).join("");
+      return null; }).filter(Boolean).join("");
 
     // Expanded: show each activity in order
     const bodyItems=dateItems.map(item=>{
