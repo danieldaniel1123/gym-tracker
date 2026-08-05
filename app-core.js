@@ -285,7 +285,7 @@ function addExerciseToSession(name){
   // Always start with one empty set (no pre-fill from last session)
   const sets=[{reps:"",weight:"",done:false}];
   const savedTimer=JSON.parse(localStorage.getItem('gt_rest_timer')||'120');
-  session.exercises.push({exData,sets,machineUsed:(exData.equipment||[])[0]||null,collapsed:false,restDuration:savedTimer,restRemaining:null,restInterval:null,restConfigMode:false,notes:""});
+  session.exercises.push({exData,sets,machineUsed:(exData.equipment||[])[0]||null,collapsed:false,restDuration:savedTimer,restRemaining:null,restInterval:null,restConfigMode:false,notes:"",supersetId:null,dropSets:[]});
   saveSessionToLocal();
   renderExerciseList();
   setTimeout(()=>{ const cards=document.querySelectorAll(".exercise-card,.exercise-card-collapsed"); if(cards.length) cards[cards.length-1].scrollIntoView({behavior:"smooth",block:"start"}); },50);
@@ -345,9 +345,21 @@ function startRestTimer(idx){
 function renderExerciseList(){
   const list=$("exercise-list");
   if(!session.exercises.length){ list.innerHTML=""; return; }
-  list.innerHTML=session.exercises.map((item,idx)=>item.collapsed?buildCollapsedCard(item,idx):buildExerciseCard(item,idx)).join("");
+  const rendered=new Set(); let html="";
+  session.exercises.forEach((item,idx)=>{
+    if(rendered.has(idx)) return;
+    if(item.supersetId){
+      const members=session.exercises.map((e,i)=>({e,i})).filter(({e})=>e.supersetId===item.supersetId);
+      members.forEach(({i})=>rendered.add(i));
+      html+=buildSupersetBlock(members);
+    } else {
+      rendered.add(idx);
+      html+=item.collapsed?buildCollapsedCard(item,idx):buildExerciseCard(item,idx);
+    }
+  });
+  list.innerHTML=html;
   bindExerciseCardEvents();
-  setTimeout(initAllMuscleDiagrams, 50);
+  setTimeout(initAllMuscleDiagrams,50);
 }
 
 function bindExerciseCardEvents(){
@@ -357,7 +369,78 @@ function bindExerciseCardEvents(){
   list.querySelectorAll(".add-set-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); const last=session.exercises[idx].sets.slice(-1)[0]; session.exercises[idx].sets.push({reps:last?.reps||"",weight:last?.weight||"",done:false}); saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".set-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const {exIdx,setIdx}=e.target.dataset; session.exercises[exIdx].sets.splice(parseInt(setIdx),1); saveSessionToLocal(); renderExerciseList(); }); });
   list.querySelectorAll(".exercise-card-del,.collapsed-del-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ session.exercises.splice(parseInt(e.target.dataset.exIdx),1); saveSessionToLocal(); renderExerciseList(); }); });
-  list.querySelectorAll(".exercise-save-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); session.exercises[idx].collapsed=true; saveSessionToLocal(); renderExerciseList(); }); });
+  list.querySelectorAll(".exercise-save-btn").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      if(e.target.dataset.supersetId){
+        // Collapse all exercises in superset
+        const sid=e.target.dataset.supersetId;
+        session.exercises.forEach(ex=>{ if(ex.supersetId===sid) ex.collapsed=true; });
+      } else {
+        const idx=parseInt(e.target.dataset.exIdx);
+        session.exercises[idx].collapsed=true;
+      }
+      saveSessionToLocal(); renderExerciseList();
+    });
+  });
+
+  // Drop set inputs
+  list.querySelectorAll(".drop-inp").forEach(inp=>{
+    inp.addEventListener("change",e=>{
+      const {exIdx,dropIdx,field}=e.target.dataset;
+      if(!session.exercises[exIdx].dropSets[dropIdx]) return;
+      session.exercises[exIdx].dropSets[dropIdx][field]=e.target.value?parseFloat(e.target.value):"";
+      saveSessionToLocal();
+    });
+  });
+
+  // Drop set check
+  list.querySelectorAll(".drop-check").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      const {exIdx,dropIdx}=e.target.dataset;
+      const ex=session.exercises[exIdx];
+      ex.dropSets[dropIdx].done=!ex.dropSets[dropIdx].done;
+      saveSessionToLocal(); renderExerciseList();
+    });
+  });
+
+  // Add drop set
+  list.querySelectorAll(".add-drop-btn").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      const idx=parseInt(e.target.dataset.exIdx);
+      const lastDrop=session.exercises[idx].dropSets.slice(-1)[0];
+      const lastSet=session.exercises[idx].sets.slice(-1)[0];
+      const lastWeight=lastDrop?.weight||lastSet?.weight||"";
+      const suggestedWeight=lastWeight?Math.max(0,parseFloat(lastWeight)-5):"";
+      session.exercises[idx].dropSets.push({reps:lastDrop?.reps||lastSet?.reps||"",weight:suggestedWeight,done:false});
+      saveSessionToLocal(); renderExerciseList();
+    });
+  });
+
+  // Delete drop set
+  list.querySelectorAll(".set-del-btn[data-is-drop]").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      const {exIdx,dropIdx}=e.target.dataset;
+      session.exercises[exIdx].dropSets.splice(parseInt(dropIdx),1);
+      saveSessionToLocal(); renderExerciseList();
+    });
+  });
+
+  // Group as superset
+  list.querySelectorAll(".group-superset-btn").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      const idx=parseInt(e.target.dataset.exIdx);
+      showSupersetPicker(idx);
+    });
+  });
+
+  // Ungroup superset
+  list.querySelectorAll(".ungroup-superset-btn").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      const sid=e.target.dataset.supersetId;
+      session.exercises.forEach(ex=>{ if(ex.supersetId===sid) ex.supersetId=null; });
+      saveSessionToLocal(); renderExerciseList();
+    });
+  });
 
   // 1. Edit exercise inline
   list.querySelectorAll(".exercise-edit-btn").forEach(btn=>{ btn.addEventListener("click",e=>{ const idx=parseInt(e.target.dataset.exIdx); openInlineExEdit(idx); }); });
@@ -478,7 +561,84 @@ function buildExerciseCard(item,idx){
       <button class="rest-side-action muted" data-action="${rightAction}" data-ex-idx="${idx}">${rightLabel}</button>
     </div>`;
 
-  return `<div class="exercise-card" id="ex-card-${idx}" draggable="true" data-ex-idx="${idx}"><div class="exercise-card-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="exercise-card-name">${exData.name}</span><div class="exercise-card-actions"><button class="exercise-edit-btn" data-ex-idx="${idx}" title="Edit exercise">✏️</button><button class="exercise-minimize-btn" data-ex-idx="${idx}" title="Minimize">−</button><button class="exercise-card-del" data-ex-idx="${idx}">✕</button></div></div><div class="muscle-section"><div class="muscle-diagrams">${diagramHTML}</div><div class="muscle-legend"><div class="muscle-legend-title">Muscles</div>${legendHTML}<div class="equip-section">${(exData.equipment||[]).map(e=>`<div class="equip-row"><span class="equip-dot"></span>${e}</div>`).join("")}</div></div></div>${machineHTML}${prHTML}<div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span><span></span></div>${setsHTML}<div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button></div>${restTimerHTML}<div class="exercise-notes-row"><textarea class="exercise-notes-input" data-ex-idx="${idx}" placeholder="Notes (optional)…" rows="2" autocomplete="off" autocorrect="off">${item.notes||""}</textarea></div><div class="save-ex-row"><button class="exercise-save-btn" data-ex-idx="${idx}">✓ Save exercise</button></div></div>`;
+  // Drop sets HTML
+  const dropSetsHTML=(item.dropSets||[]).map((ds,dIdx)=>`<div class="drop-set-row ${ds.done?"completed":""}"><span class="drop-label">D${dIdx+1}</span><input class="set-input drop-inp" type="number" min="0" max="999" step="1" value="${ds.reps||""}" placeholder="—" data-ex-idx="${idx}" data-drop-idx="${dIdx}" data-field="reps" inputmode="numeric"/><input class="set-input drop-inp" type="number" min="0" max="9999" step="0.5" value="${ds.weight||""}" placeholder="—" data-ex-idx="${idx}" data-drop-idx="${dIdx}" data-field="weight" inputmode="decimal"/><button class="set-check drop-check ${ds.done?"done":""}" data-ex-idx="${idx}" data-drop-idx="${dIdx}">✓</button><button class="set-del-btn" data-ex-idx="${idx}" data-drop-idx="${dIdx}" data-is-drop="true">✕</button></div>`).join("");
+  return `<div class="exercise-card" id="ex-card-${idx}" draggable="true" data-ex-idx="${idx}"><div class="exercise-card-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="exercise-card-name">${exData.name}</span><div class="exercise-card-actions"><button class="group-superset-btn" data-ex-idx="${idx}" title="Group as superset">⊕</button><button class="exercise-edit-btn" data-ex-idx="${idx}" title="Edit exercise">✏️</button><button class="exercise-minimize-btn" data-ex-idx="${idx}" title="Minimize">−</button><button class="exercise-card-del" data-ex-idx="${idx}">✕</button></div></div><div class="muscle-section"><div class="muscle-diagrams">${diagramHTML}</div><div class="muscle-legend"><div class="muscle-legend-title">Muscles</div>${legendHTML}<div class="equip-section">${(exData.equipment||[]).map(e=>`<div class="equip-row"><span class="equip-dot"></span>${e}</div>`).join("")}</div></div></div>${machineHTML}${prHTML}<div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span><span></span></div>${setsHTML}${dropSetsHTML}<div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button><button class="add-drop-btn" data-ex-idx="${idx}">↓ Drop set</button></div>${restTimerHTML}<div class="exercise-notes-row"><textarea class="exercise-notes-input" data-ex-idx="${idx}" placeholder="Notes (optional)…" rows="2" autocomplete="off" autocorrect="off">${item.notes||""}</textarea></div><div class="save-ex-row"><button class="exercise-save-btn" data-ex-idx="${idx}">✓ Save exercise</button></div></div>`;
+}
+
+
+function buildSupersetBlock(members) {
+  const sid = members[0].e.supersetId;
+  const letters = "ABCDEFGH";
+  const exercisesHTML = members.map(({e: item, i: idx}, mi) => {
+    const {exData, sets} = item;
+    const setsHTML = sets.map((set, sIdx) => `<div class="set-row ${set.done?"completed":""}"><span class="set-num">${sIdx+1}</span><input class="set-input" type="number" min="0" max="999" step="1" value="${set.reps||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="reps" inputmode="numeric"/><input class="set-input" type="number" min="0" max="9999" step="0.5" value="${set.weight||""}" placeholder="—" data-ex-idx="${idx}" data-set-idx="${sIdx}" data-field="weight" inputmode="decimal"/><button class="set-check ${set.done?"done":""}" data-ex-idx="${idx}" data-set-idx="${sIdx}">✓</button><button class="set-del-btn" data-ex-idx="${idx}" data-set-idx="${sIdx}">✕</button></div>`).join("");
+    const dropSetsHTML = (item.dropSets||[]).map((ds,dIdx)=>`<div class="drop-set-row ${ds.done?"completed":""}"><span class="drop-label">D${dIdx+1}</span><input class="set-input drop-inp" type="number" min="0" max="999" step="1" value="${ds.reps||""}" placeholder="—" data-ex-idx="${idx}" data-drop-idx="${dIdx}" data-field="reps" inputmode="numeric"/><input class="set-input drop-inp" type="number" min="0" max="9999" step="0.5" value="${ds.weight||""}" placeholder="—" data-ex-idx="${idx}" data-drop-idx="${dIdx}" data-field="weight" inputmode="decimal"/><button class="set-check drop-check ${ds.done?"done":""}" data-ex-idx="${idx}" data-drop-idx="${dIdx}">✓</button><button class="set-del-btn" data-ex-idx="${idx}" data-drop-idx="${dIdx}" data-is-drop="true">✕</button></div>`).join("");
+    return `<div class="superset-ex-wrap">
+      <div class="superset-ex-header">
+        <span class="drag-handle">⠿</span>
+        <span class="superset-letter">${letters[mi]}</span>
+        <span class="superset-ex-name">${exData.name}</span>
+        <button class="exercise-card-del" data-ex-idx="${idx}">✕</button>
+      </div>
+      <div class="sets-header"><span>Set</span><span>Reps</span><span>kg</span><span></span><span></span></div>
+      ${setsHTML}${dropSetsHTML}
+      <div class="add-set-row"><button class="add-set-btn" data-ex-idx="${idx}">+ Add set</button><button class="add-drop-btn" data-ex-idx="${idx}">↓ Drop set</button></div>
+    </div>`;
+  }).join("");
+
+  // Shared rest timer from first member
+  const firstItem = members[0].e;
+  const firstIdx = members[0].i;
+  const isConfig = firstItem.restConfigMode||false;
+  const isActive = firstItem.restRemaining!==null&&firstItem.restRemaining>0;
+  const restSecs = isActive?firstItem.restRemaining:(firstItem.restDuration||120);
+  const restVal = fmtTimer(restSecs);
+  const restColor = isActive?(firstItem.restRemaining<=10?"#ef4444":firstItem.restRemaining<=30?"#f59e0b":"#22c55e"):"";
+  const leftLabel = isActive?"Skip":isConfig?"Remove":"Remove";
+  const rightLabel = isActive?"Config":isConfig?"Save":"Configure";
+  const leftAction = isActive?"skip":"remove";
+  const rightAction = isActive?"config":isConfig?"save":"config";
+  const restTimerHTML = firstItem.restDuration===null
+    ? `<div class="rest-timer-row"><button class="rest-side-action muted" data-action="restore" data-ex-idx="${firstIdx}">+ Add rest timer</button></div>`
+    : `<div class="rest-timer-row"><button class="rest-side-action muted" data-action="${leftAction}" data-ex-idx="${firstIdx}">${leftLabel}</button><input class="rest-timer-input" id="rest-input-${firstIdx}" value="${restVal}" ${isActive||!isConfig?"readonly":""} style="${restColor?`color:${restColor};border-color:${restColor}40`:""}" data-ex-idx="${firstIdx}" inputmode="numeric" maxlength="5"/><button class="rest-side-action muted" data-action="${rightAction}" data-ex-idx="${firstIdx}">${rightLabel}</button></div>`;
+
+  return `<div class="superset-block">
+    <div class="superset-label-bar">
+      <span class="superset-label-text">⚡ Superset</span>
+      <button class="ungroup-superset-btn" data-superset-id="${sid}">Ungroup</button>
+    </div>
+    ${exercisesHTML}
+    ${restTimerHTML}
+    <div class="save-ex-row"><button class="exercise-save-btn superset-save-btn" data-superset-id="${sid}">✓ Save superset</button></div>
+  </div>`;
+}
+
+function showSupersetPicker(idx) {
+  const ex = session.exercises[idx];
+  if(ex.supersetId) { showToast("Already in a superset — ungroup first"); return; }
+  // Show a simple picker modal
+  const available = session.exercises.map((e,i)=>({e,i})).filter(({e,i})=>i!==idx&&!e.supersetId&&!e.collapsed);
+  if(!available.length){ showToast("Add another exercise first to create a superset"); return; }
+  // Build a simple inline picker
+  const existingPicker = document.getElementById("superset-picker");
+  if(existingPicker) existingPicker.remove();
+  const picker = document.createElement("div");
+  picker.id = "superset-picker";
+  picker.className = "superset-picker-wrap";
+  picker.innerHTML = `<div class="superset-picker-title">Group with:</div>${available.map(({e,i})=>`<div class="superset-picker-item" data-pair-idx="${i}">${e.exData.name}</div>`).join("")}<button class="superset-picker-cancel">Cancel</button>`;
+  const card = document.getElementById("ex-card-"+idx);
+  if(card) card.insertAdjacentElement("afterend", picker);
+  picker.querySelectorAll(".superset-picker-item").forEach(item=>{
+    item.addEventListener("click",()=>{
+      const pairIdx = parseInt(item.dataset.pairIdx);
+      const sid = "ss_"+Date.now();
+      session.exercises[idx].supersetId = sid;
+      session.exercises[pairIdx].supersetId = sid;
+      saveSessionToLocal(); picker.remove(); renderExerciseList();
+    });
+  });
+  picker.querySelector(".superset-picker-cancel").addEventListener("click",()=>picker.remove());
 }
 
 function buildCollapsedCard(item,idx){
@@ -762,3 +922,4 @@ function initAllMuscleDiagrams() {
     }
   });
 }
+
