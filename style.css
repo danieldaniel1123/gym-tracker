@@ -625,3 +625,199 @@ textarea { resize:vertical; min-height:72px; line-height:1.5; }
   .gps-stat-val { font-size: 1.1rem; }
   .gps-map { height: 180px; }
 }
+
+/* ══════════════════════════════════════════
+   SUPERSETS & DROP SETS
+   ══════════════════════════════════════════ */
+
+/* Superset block */
+.superset-block {
+  border: 2px solid #7F77DD;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.superset-label-bar {
+  background: #7F77DD;
+  padding: 6px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.superset-label-text {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ungroup-superset-btn {
+  font-size: 10px;
+  color: rgba(255,255,255,0.8);
+  background: none;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.superset-ex-wrap {
+  background: var(--bg2);
+  border-bottom: 1px solid #7F77DD;
+}
+.superset-ex-wrap:last-of-type { border-bottom: none; }
+.superset-ex-header {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(127,119,221,0.06);
+}
+.superset-letter {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7F77DD;
+  background: rgba(127,119,221,0.15);
+  border: 1px solid rgba(127,119,221,0.3);
+  border-radius: 20px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+.superset-ex-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+.superset-save-btn {
+  background: #7F77DD !important;
+}
+
+/* Superset picker */
+.superset-picker-wrap {
+  background: var(--bg2);
+  border: 2px solid #7F77DD;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.superset-picker-title {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.superset-picker-item {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.superset-picker-item:hover { background: rgba(127,119,221,0.1); }
+.superset-picker-cancel {
+  width: 100%;
+  padding: 9px 14px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+}
+
+/* Group superset button */
+.group-superset-btn {
+  background: rgba(127,119,221,0.1);
+  border: 1px solid rgba(127,119,221,0.3);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 13px;
+  color: #7F77DD;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.group-superset-btn:hover {
+  background: rgba(127,119,221,0.2);
+}
+
+/* Drop sets */
+.drop-set-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 1fr 28px 22px;
+  gap: 4px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+  background: rgba(239,159,39,0.04);
+}
+.drop-set-row.completed { opacity: 0.55; }
+.drop-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #EF9F27;
+  text-align: center;
+}
+.drop-inp {
+  background: rgba(239,159,39,0.07) !important;
+  border-color: rgba(239,159,39,0.25) !important;
+}
+.drop-check {
+  border-color: rgba(239,159,39,0.4) !important;
+}
+.drop-check.done {
+  background: #EF9F27 !important;
+  border-color: #EF9F27 !important;
+}
+.add-drop-btn {
+  flex: 1;
+  background: none;
+  border: 1px dashed rgba(239,159,39,0.35);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  font-size: 0.78rem;
+  color: #EF9F27;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+.add-drop-btn:hover {
+  background: rgba(239,159,39,0.07);
+}
+
+/* History superset */
+.history-superset-block {
+  margin-bottom: 8px;
+  border: 1px solid rgba(127,119,221,0.3);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.history-superset-label {
+  background: rgba(127,119,221,0.15);
+  padding: 4px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #7F77DD;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.history-superset-ex {
+  padding: 6px 10px;
+  border-top: 1px solid rgba(127,119,221,0.15);
+}
+.history-ex-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  display: block;
+  margin-bottom: 3px;
+}
+.drop-pill {
+  background: rgba(239,159,39,0.15) !important;
+  color: #EF9F27 !important;
+  border-color: rgba(239,159,39,0.3) !important;
+}
